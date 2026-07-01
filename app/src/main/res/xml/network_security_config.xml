@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Default: HTTPS only -->
+    <base-config cleartextTrafficPermitted="false" />
+
+    <!-- Allow cleartext for local network (Ollama / self-hosted) -->
+    <!-- Users can self-host on their LAN; common private IP ranges -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">10.0.0.0</domain>
+        <domain includeSubdomains="false">172.16.0.0</domain>
+        <domain includeSubdomains="false">192.168.0.0</domain>
+    </domain-config>
+</network-security-config>

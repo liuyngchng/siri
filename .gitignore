@@ -1,0 +1,37 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+
+# Android
+local.properties
+*.hprof
+*.apk
+*.aab
+*.dex
+*.class
+app/release/
+app/build/
+app/.cxx/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets & config
+secrets.properties
+
+# Model cache (download-models.sh output)
+.model_cache/
+*.tar
+*.tar.bz2
+
+# Test
+*/test-results/

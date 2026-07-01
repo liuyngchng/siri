@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Siri</string>
+    <string name="settings_title">大模型配置</string>
+    <string name="api_url_label">API 地址</string>
+    <string name="model_label">模型名称</string>
+    <string name="api_key_label">API Key</string>
+    <string name="save">保存</string>
+    <string name="clear">清空</string>
+    <string name="test_connection">测试连接</string>
+    <string name="listening">正在聆听…</string>
+    <string name="thinking">思考中…</string>
+    <string name="speaking">播报中…</string>
+    <string name="idle">点击麦克风开始</string>
+    <string name="config_required">请先在设置中配置 API 信息</string>
+    <string name="voice_channel">语音服务</string>
+    <string name="voice_listening_notification">正在语音聆听中…</string>
+</resources>
