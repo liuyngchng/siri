@@ -95,9 +95,11 @@ class LlmClient(private val configRepository: ConfigRepository) {
                         val choices = json.optJSONArray("choices")
                         if (choices != null && choices.length() > 0) {
                             val delta = choices.getJSONObject(0).optJSONObject("delta")
-                            val content = delta?.optString("content") ?: ""
-                            if (content.isNotEmpty()) {
-                                emit(content)
+                            if (delta != null && delta.has("content") && !delta.isNull("content")) {
+                                val content = delta.getString("content")
+                                if (content.isNotEmpty()) {
+                                    emit(content)
+                                }
                             }
                         }
                     } catch (_: Exception) {

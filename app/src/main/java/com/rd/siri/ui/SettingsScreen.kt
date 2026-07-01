@@ -26,7 +26,7 @@ data class LlmPreset(
 )
 
 val LLM_PRESETS = listOf(
-    LlmPreset("DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat"),
+    LlmPreset("DeepSeek", "https://api.deepseek.com/v1", "deepseek-v4-flash"),
     LlmPreset("硅基流动", "https://api.siliconflow.cn/v1", "deepseek-ai/DeepSeek-V3"),
 )
 
@@ -89,8 +89,8 @@ fun SettingsScreen(
                 value = model,
                 onValueChange = { model = it; viewModel.resetTestResult() },
                 label = { Text("模型名称") },
-                placeholder = { Text("deepseek-chat") },
-                supportingText = { Text("如 deepseek-chat, gpt-4o-mini, qwen-plus 等") },
+                placeholder = { Text("deepseek-v4-flash") },
+                supportingText = { Text("如 deepseek-v4-flash, gpt-4o-mini, qwen-plus 等") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
