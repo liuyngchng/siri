@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Outer ring -->
+    <path
+        android:pathData="M54,54m-36,0a36,36 0,1 1,72 0a36,36 0,1 1,-72 0"
+        android:strokeWidth="2"
+        android:strokeColor="#33FFFFFF"
+        android:fillColor="#00000000" />
+
+    <!-- Waveform bars, color interpolated cyan -> purple -->
+    <!-- Bar 1 -->
+    <path
+        android:pathData="M34,48 L34,60"
+        android:strokeWidth="3" android:strokeLineCap="round"
+        android:strokeColor="#7DD3FC" android:fillColor="#00000000" />
+    <!-- Bar 2 -->
+    <path
+        android:pathData="M40,43 L40,65"
+        android:strokeWidth="3" android:strokeLineCap="round"
+        android:strokeColor="#81C9F8" android:fillColor="#00000000" />
+    <!-- Bar 3 -->
+    <path
+        android:pathData="M46,37 L46,71"
+        android:strokeWidth="3" android:strokeLineCap="round"
+        android:strokeColor="#8CB5F2" android:fillColor="#00000000" />
+    <!-- Bar 4 -->
+    <path
+        android:pathData="M52,32 L52,76"
+        android:strokeWidth="3" android:strokeLineCap="round"
+        android:strokeColor="#9A9FE8" android:fillColor="#00000000" />
+    <!-- Bar 5 - center peak -->
+    <path
+        android:pathData="M54,28 L54,80"
+        android:strokeWidth="3" android:strokeLineCap="round"
+        android:strokeColor="#A48EDF" android:fillColor="#00000000" />
+    <!-- Bar 6 -->
+    <path
+        android:pathData="M58,35 L58,73"
+        android:strokeWidth="3" android:strokeLineCap="round"
+        android:strokeColor="#A48EDF" android:fillColor="#00000000" />
+    <!-- Bar 7 -->
+    <path
+        android:pathData="M62,40 L62,68"
+        android:strokeWidth="3" android:strokeLineCap="round"
+        android:strokeColor="#A48EDF" android:fillColor="#00000000" />
+    <!-- Bar 8 -->
+    <path
+        android:pathData="M66,45 L66,63"
+        android:strokeWidth="3" android:strokeLineCap="round"
+        android:strokeColor="#A78BFA" android:fillColor="#00000000" />
+    <!-- Bar 9 -->
+    <path
+        android:pathData="M72,49 L72,59"
+        android:strokeWidth="3" android:strokeLineCap="round"
+        android:strokeColor="#B084F2" android:fillColor="#00000000" />
+    <!-- Bar 10 -->
+    <path
+        android:pathData="M76,52 L76,56"
+        android:strokeWidth="2.5" android:strokeLineCap="round"
+        android:strokeColor="#B97DE8" android:fillColor="#00000000" />
+
+    <!-- Center dot accent -->
+    <path
+        android:pathData="M54,85m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0"
+        android:fillColor="#A78BFA" />
+</vector>
