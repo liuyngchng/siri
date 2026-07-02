@@ -1,6 +1,7 @@
 package com.rd.siri.audio
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.media.AudioFormat
@@ -32,6 +33,7 @@ class AudioRecorder(private val context: Context) {
     private val bufferSize: Int = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT)
         .let { it * BUFFER_SIZE_FACTOR }
 
+    @SuppressLint("MissingPermission")
     fun startRecording(): Flow<FloatArray> = flow {
         if (!isPermissionGranted(context)) {
             throw SecurityException("RECORD_AUDIO permission not granted")
