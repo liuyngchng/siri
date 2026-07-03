@@ -1,0 +1,546 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		79C805A02FF7DF6700A08F5B /* SiriAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79C8059F2FF7DF6700A08F5B /* SiriAppApp.swift */; };
+		79C805A22FF7DF6700A08F5B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79C805A12FF7DF6700A08F5B /* ContentView.swift */; };
+		79C805A42FF7DF6800A08F5B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 79C805A32FF7DF6800A08F5B /* Assets.xcassets */; };
+		79C805A72FF7DF6800A08F5B /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 79C805A62FF7DF6800A08F5B /* Preview Assets.xcassets */; };
+		FF6340AEEB634F4ABBADBE4B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A423D23B65B45D08FE433E3 /* AppDelegate.swift */; };
+		DE7BF72202BA4D86A35CA2E2 /* ChatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A235D6C3C94424A95A40247 /* ChatMessage.swift */; };
+		5475B21456B24F308DA0021D /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF8CB999AD3041E0ACD01996 /* AppState.swift */; };
+		5858C72BDB1648D393B6738A /* LlmConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5A74F79EB024458B73560D8 /* LlmConfig.swift */; };
+		52FFC4404B08415D8E695BF0 /* LlmPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E8A01A9FE3946858E89D654 /* LlmPreset.swift */; };
+		AB08C49821514483A558DF91 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86B6DBF92BDB490B9DCA85C9 /* Extensions.swift */; };
+		B77EE3F598AC40F2BDBB88C5 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6616447CD980402EA4814893 /* KeychainHelper.swift */; };
+		CDAF823AFEC54148B79A5140 /* ModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8630B520CE1C4A9BB6A9D124 /* ModelManager.swift */; };
+		495E00872A1F4409A7ECBDC9 /* TarBz2Extractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C35A3E9980474859B66338FD /* TarBz2Extractor.swift */; };
+		4FE92A09D578418AA2FEBEFB /* ConfigRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CCAF64DCBA045C2A8EB00D5 /* ConfigRepository.swift */; };
+		8DBBFAAEB0634A1C84A79D7F /* ConfigViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4EAB841A334476DA8B7B0E9 /* ConfigViewModel.swift */; };
+		1087E93ADFF84A588DADE826 /* ChatSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39ED823038494F2BA82D4568 /* ChatSession.swift */; };
+		5CF981A1A96A4444B952CF77 /* LlmClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E255AA2535AD4E5EA89AFFFA /* LlmClient.swift */; };
+		A7BDED88EFF141278A38C1DA /* AudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B0484C3D07E4CF5911A6E65 /* AudioPlayer.swift */; };
+		D9EE6C120D224DF694204F7B /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D1797D2C5DF446A922F971C /* AudioRecorder.swift */; };
+		745864A84B4B482797185001 /* AudioSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D74FD10E5EEA479584867D9C /* AudioSessionManager.swift */; };
+		6EB7859D02144241969BCF1C /* SherpaAsrEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54C097292C3A4126AB02E69A /* SherpaAsrEngine.swift */; };
+		9606974F1CDA43BE820242F0 /* SherpaTtsEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE4DD627403C4F4EBD2C1DB6 /* SherpaTtsEngine.swift */; };
+		6F9DC92F1C58451A93961CD5 /* TextNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CDB49A5CCE942FAA63DF656 /* TextNormalizer.swift */; };
+		24133D224F564632BE6DCF84 /* ContentViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 237AF0FA117F4AF2A14F33DB /* ContentViewModel.swift */; };
+		0832BDEA9B7345CA9DCDC737 /* MainViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94539FC5D5074D9A932E50D3 /* MainViewModel.swift */; };
+		8729A560BF814BCA8635DD76 /* MainScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526A1237892D4644ACB127EC /* MainScreen.swift */; };
+		E7B90FFFBDD34688A28DA1E3 /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD7E3C8DE001425E844B70D5 /* SettingsScreen.swift */; };
+		2DCB61B4D3A44DBB8372207D /* ModelSetupScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = C97859028D774B4F82C91887 /* ModelSetupScreen.swift */; };
+		948274C2A2DA43FBBDD71E9E /* MessageBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3874D804AD334978926C780A /* MessageBubble.swift */; };
+		86186CD126BD4928B4D9585B /* MicButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 164EF0424FCF47FA92C68F81 /* MicButton.swift */; };
+		31EF43410F5A4DB4BE2F15D6 /* ModelSlotCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C14E112A5E81430C9BD0F42F /* ModelSlotCard.swift */; };
+		E41EC46E95B34D5483E19B7E /* PulseRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2B41C65292243559B4B4427 /* PulseRing.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		79C8059C2FF7DF6700A08F5B /* SiriApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SiriApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		79C8059F2FF7DF6700A08F5B /* SiriAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiriAppApp.swift; sourceTree = "<group>"; };
+		79C805A12FF7DF6700A08F5B /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		79C805A32FF7DF6800A08F5B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		79C805A62FF7DF6800A08F5B /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		9A423D23B65B45D08FE433E3 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDelegate.swift"; sourceTree = "<group>"; };
+		7A235D6C3C94424A95A40247 /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChatMessage.swift"; sourceTree = "<group>"; };
+		FF8CB999AD3041E0ACD01996 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState.swift"; sourceTree = "<group>"; };
+		A5A74F79EB024458B73560D8 /* LlmConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LlmConfig.swift"; sourceTree = "<group>"; };
+		8E8A01A9FE3946858E89D654 /* LlmPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LlmPreset.swift"; sourceTree = "<group>"; };
+		86B6DBF92BDB490B9DCA85C9 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Extensions.swift"; sourceTree = "<group>"; };
+		6616447CD980402EA4814893 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "KeychainHelper.swift"; sourceTree = "<group>"; };
+		8630B520CE1C4A9BB6A9D124 /* ModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelManager.swift"; sourceTree = "<group>"; };
+		C35A3E9980474859B66338FD /* TarBz2Extractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TarBz2Extractor.swift"; sourceTree = "<group>"; };
+		5CCAF64DCBA045C2A8EB00D5 /* ConfigRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ConfigRepository.swift"; sourceTree = "<group>"; };
+		D4EAB841A334476DA8B7B0E9 /* ConfigViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ConfigViewModel.swift"; sourceTree = "<group>"; };
+		39ED823038494F2BA82D4568 /* ChatSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ChatSession.swift"; sourceTree = "<group>"; };
+		E255AA2535AD4E5EA89AFFFA /* LlmClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LlmClient.swift"; sourceTree = "<group>"; };
+		9B0484C3D07E4CF5911A6E65 /* AudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioPlayer.swift"; sourceTree = "<group>"; };
+		9D1797D2C5DF446A922F971C /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioRecorder.swift"; sourceTree = "<group>"; };
+		D74FD10E5EEA479584867D9C /* AudioSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioSessionManager.swift"; sourceTree = "<group>"; };
+		54C097292C3A4126AB02E69A /* SherpaAsrEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SherpaAsrEngine.swift"; sourceTree = "<group>"; };
+		FE4DD627403C4F4EBD2C1DB6 /* SherpaTtsEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SherpaTtsEngine.swift"; sourceTree = "<group>"; };
+		4CDB49A5CCE942FAA63DF656 /* TextNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TextNormalizer.swift"; sourceTree = "<group>"; };
+		237AF0FA117F4AF2A14F33DB /* ContentViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ContentViewModel.swift"; sourceTree = "<group>"; };
+		94539FC5D5074D9A932E50D3 /* MainViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MainViewModel.swift"; sourceTree = "<group>"; };
+		526A1237892D4644ACB127EC /* MainScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MainScreen.swift"; sourceTree = "<group>"; };
+		DD7E3C8DE001425E844B70D5 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsScreen.swift"; sourceTree = "<group>"; };
+		C97859028D774B4F82C91887 /* ModelSetupScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelSetupScreen.swift"; sourceTree = "<group>"; };
+		3874D804AD334978926C780A /* MessageBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MessageBubble.swift"; sourceTree = "<group>"; };
+		164EF0424FCF47FA92C68F81 /* MicButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MicButton.swift"; sourceTree = "<group>"; };
+		C14E112A5E81430C9BD0F42F /* ModelSlotCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelSlotCard.swift"; sourceTree = "<group>"; };
+		E2B41C65292243559B4B4427 /* PulseRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PulseRing.swift"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		79C805992FF7DF6700A08F5B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		79C805932FF7DF6700A08F5B = {
+			isa = PBXGroup;
+			children = (
+				79C8059E2FF7DF6700A08F5B /* SiriApp */,
+				79C8059D2FF7DF6700A08F5B /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		79C8059D2FF7DF6700A08F5B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				79C8059C2FF7DF6700A08F5B /* SiriApp.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		79C8059E2FF7DF6700A08F5B /* SiriApp */ = {
+			isa = PBXGroup;
+			children = (
+				79C8059F2FF7DF6700A08F5B /* SiriAppApp.swift */,
+				79C805A12FF7DF6700A08F5B /* ContentView.swift */,
+				79C805A32FF7DF6800A08F5B /* Assets.xcassets */,
+				79C805A52FF7DF6800A08F5B /* Preview Content */,
+				9A423D23B65B45D08FE433E3 /* AppDelegate.swift */,
+				99715EB1B6E7466584F16B1E /* ASR */,
+				87929F12F464449D87D5165B /* Audio */,
+				90C6183FC61D4A78B6EA4BB1 /* Chat */,
+				68C9B7DA6805484DB71822BB /* Config */,
+				DFF363FAE9A14334AFA4F143 /* Helpers */,
+				2945E145481A4A9BBC799D93 /* Models */,
+				EE38280A0B6A435DAAF4844B /* TTS */,
+				62C7C0955AB845599A4D6FE6 /* ViewModels */,
+				DB67BB4D1A3843E598A5DE6E /* Views */,
+			);
+			path = SiriApp;
+			sourceTree = "<group>";
+		};
+		79C805A52FF7DF6800A08F5B /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				79C805A62FF7DF6800A08F5B /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		99715EB1B6E7466584F16B1E /* ASR */ = {
+			isa = PBXGroup;
+			children = (
+				54C097292C3A4126AB02E69A /* SherpaAsrEngine.swift */,
+			);
+			path = ASR;
+			sourceTree = "<group>";
+		};
+		87929F12F464449D87D5165B /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				9B0484C3D07E4CF5911A6E65 /* AudioPlayer.swift */,
+				9D1797D2C5DF446A922F971C /* AudioRecorder.swift */,
+				D74FD10E5EEA479584867D9C /* AudioSessionManager.swift */,
+			);
+			path = Audio;
+			sourceTree = "<group>";
+		};
+		90C6183FC61D4A78B6EA4BB1 /* Chat */ = {
+			isa = PBXGroup;
+			children = (
+				39ED823038494F2BA82D4568 /* ChatSession.swift */,
+				E255AA2535AD4E5EA89AFFFA /* LlmClient.swift */,
+			);
+			path = Chat;
+			sourceTree = "<group>";
+		};
+		68C9B7DA6805484DB71822BB /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				5CCAF64DCBA045C2A8EB00D5 /* ConfigRepository.swift */,
+				D4EAB841A334476DA8B7B0E9 /* ConfigViewModel.swift */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		DFF363FAE9A14334AFA4F143 /* Helpers */ = {
+			isa = PBXGroup;
+			children = (
+				86B6DBF92BDB490B9DCA85C9 /* Extensions.swift */,
+				6616447CD980402EA4814893 /* KeychainHelper.swift */,
+				8630B520CE1C4A9BB6A9D124 /* ModelManager.swift */,
+				C35A3E9980474859B66338FD /* TarBz2Extractor.swift */,
+			);
+			path = Helpers;
+			sourceTree = "<group>";
+		};
+		2945E145481A4A9BBC799D93 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				7A235D6C3C94424A95A40247 /* ChatMessage.swift */,
+				FF8CB999AD3041E0ACD01996 /* AppState.swift */,
+				A5A74F79EB024458B73560D8 /* LlmConfig.swift */,
+				8E8A01A9FE3946858E89D654 /* LlmPreset.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		EE38280A0B6A435DAAF4844B /* TTS */ = {
+			isa = PBXGroup;
+			children = (
+				FE4DD627403C4F4EBD2C1DB6 /* SherpaTtsEngine.swift */,
+				4CDB49A5CCE942FAA63DF656 /* TextNormalizer.swift */,
+			);
+			path = TTS;
+			sourceTree = "<group>";
+		};
+		62C7C0955AB845599A4D6FE6 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				237AF0FA117F4AF2A14F33DB /* ContentViewModel.swift */,
+				94539FC5D5074D9A932E50D3 /* MainViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		DB67BB4D1A3843E598A5DE6E /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				526A1237892D4644ACB127EC /* MainScreen.swift */,
+				DD7E3C8DE001425E844B70D5 /* SettingsScreen.swift */,
+				C97859028D774B4F82C91887 /* ModelSetupScreen.swift */,
+				A164B0650ED74295B46BE23B /* Components */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A164B0650ED74295B46BE23B /* Views/Components */ = {
+			isa = PBXGroup;
+			children = (
+				3874D804AD334978926C780A /* MessageBubble.swift */,
+				164EF0424FCF47FA92C68F81 /* MicButton.swift */,
+				C14E112A5E81430C9BD0F42F /* ModelSlotCard.swift */,
+				E2B41C65292243559B4B4427 /* PulseRing.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		79C8059B2FF7DF6700A08F5B /* SiriApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 79C805AA2FF7DF6800A08F5B /* Build configuration list for PBXNativeTarget "SiriApp" */;
+			buildPhases = (
+				79C805982FF7DF6700A08F5B /* Sources */,
+				79C805992FF7DF6700A08F5B /* Frameworks */,
+				79C8059A2FF7DF6700A08F5B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SiriApp;
+			productName = SiriApp;
+			productReference = 79C8059C2FF7DF6700A08F5B /* SiriApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		79C805942FF7DF6700A08F5B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1420;
+				LastUpgradeCheck = 1420;
+				TargetAttributes = {
+					79C8059B2FF7DF6700A08F5B = {
+						CreatedOnToolsVersion = 14.2;
+					};
+				};
+			};
+			buildConfigurationList = 79C805972FF7DF6700A08F5B /* Build configuration list for PBXProject "SiriApp" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 79C805932FF7DF6700A08F5B;
+			productRefGroup = 79C8059D2FF7DF6700A08F5B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				79C8059B2FF7DF6700A08F5B /* SiriApp */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		79C8059A2FF7DF6700A08F5B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				79C805A72FF7DF6800A08F5B /* Preview Assets.xcassets in Resources */,
+				79C805A42FF7DF6800A08F5B /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		79C805982FF7DF6700A08F5B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				79C805A22FF7DF6700A08F5B /* ContentView.swift in Sources */,
+				79C805A02FF7DF6700A08F5B /* SiriAppApp.swift in Sources */,
+				FF6340AEEB634F4ABBADBE4B /* AppDelegate.swift in Sources */,
+				DE7BF72202BA4D86A35CA2E2 /* ChatMessage.swift in Sources */,
+				5475B21456B24F308DA0021D /* AppState.swift in Sources */,
+				5858C72BDB1648D393B6738A /* LlmConfig.swift in Sources */,
+				52FFC4404B08415D8E695BF0 /* LlmPreset.swift in Sources */,
+				AB08C49821514483A558DF91 /* Extensions.swift in Sources */,
+				B77EE3F598AC40F2BDBB88C5 /* KeychainHelper.swift in Sources */,
+				CDAF823AFEC54148B79A5140 /* ModelManager.swift in Sources */,
+				495E00872A1F4409A7ECBDC9 /* TarBz2Extractor.swift in Sources */,
+				4FE92A09D578418AA2FEBEFB /* ConfigRepository.swift in Sources */,
+				8DBBFAAEB0634A1C84A79D7F /* ConfigViewModel.swift in Sources */,
+				1087E93ADFF84A588DADE826 /* ChatSession.swift in Sources */,
+				5CF981A1A96A4444B952CF77 /* LlmClient.swift in Sources */,
+				A7BDED88EFF141278A38C1DA /* AudioPlayer.swift in Sources */,
+				D9EE6C120D224DF694204F7B /* AudioRecorder.swift in Sources */,
+				745864A84B4B482797185001 /* AudioSessionManager.swift in Sources */,
+				6EB7859D02144241969BCF1C /* SherpaAsrEngine.swift in Sources */,
+				9606974F1CDA43BE820242F0 /* SherpaTtsEngine.swift in Sources */,
+				6F9DC92F1C58451A93961CD5 /* TextNormalizer.swift in Sources */,
+				24133D224F564632BE6DCF84 /* ContentViewModel.swift in Sources */,
+				0832BDEA9B7345CA9DCDC737 /* MainViewModel.swift in Sources */,
+				8729A560BF814BCA8635DD76 /* MainScreen.swift in Sources */,
+				E7B90FFFBDD34688A28DA1E3 /* SettingsScreen.swift in Sources */,
+				2DCB61B4D3A44DBB8372207D /* ModelSetupScreen.swift in Sources */,
+				948274C2A2DA43FBBDD71E9E /* MessageBubble.swift in Sources */,
+				86186CD126BD4928B4D9585B /* MicButton.swift in Sources */,
+				31EF43410F5A4DB4BE2F15D6 /* ModelSlotCard.swift in Sources */,
+				E41EC46E95B34D5483E19B7E /* PulseRing.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		79C805A82FF7DF6800A08F5B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		79C805A92FF7DF6800A08F5B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		79C805AB2FF7DF6800A08F5B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"SiriApp/Preview Content\"";
+				DEVELOPMENT_TEAM = 2XX528DY7X;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "需要使用麦克风进行语音识别";
+				INFOPLIST_KEY_UIBackgroundModes = "audio";
+				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.SiriApp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "SiriApp/SiriApp-Bridging-Header.h";
+				OTHER_LDFLAGS = "-lbz2";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		79C805AC2FF7DF6800A08F5B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"SiriApp/Preview Content\"";
+				DEVELOPMENT_TEAM = 2XX528DY7X;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "需要使用麦克风进行语音识别";
+				INFOPLIST_KEY_UIBackgroundModes = "audio";
+				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.SiriApp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "SiriApp/SiriApp-Bridging-Header.h";
+				OTHER_LDFLAGS = "-lbz2";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		79C805972FF7DF6700A08F5B /* Build configuration list for PBXProject "SiriApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				79C805A82FF7DF6800A08F5B /* Debug */,
+				79C805A92FF7DF6800A08F5B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		79C805AA2FF7DF6800A08F5B /* Build configuration list for PBXNativeTarget "SiriApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				79C805AB2FF7DF6800A08F5B /* Debug */,
+				79C805AC2FF7DF6800A08F5B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 79C805942FF7DF6700A08F5B /* Project object */;
+}

@@ -33,5 +33,17 @@ secrets.properties
 *.tar
 *.tar.bz2
 
+# iOS / Xcode
+**/xcuserdata/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+DerivedData/
+
+# CocoaPods
+ios/Pods/
+
+# Swift Package Manager
+**/.swiftpm/
+
 # Test
 */test-results/
