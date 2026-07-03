@@ -196,14 +196,15 @@ JNIEXPORT jlong JNICALL
 Java_com_rd_siri_tts_SherpaTtsEngine_nativeCreateTts(
     JNIEnv *env, jclass clazz,
     jstring acousticModel, jstring vocoder,
-    jstring tokens, jstring lexicon) {
+    jstring tokens, jstring lexicon, jint numThreads) {
 
     const char *c_acoustic = (*env)->GetStringUTFChars(env, acousticModel, NULL);
     const char *c_vocoder = (*env)->GetStringUTFChars(env, vocoder, NULL);
     const char *c_tokens = (*env)->GetStringUTFChars(env, tokens, NULL);
     const char *c_lexicon = (*env)->GetStringUTFChars(env, lexicon, NULL);
 
-    LOGI("TTS: Creating with acoustic=%s, vocoder=%s", c_acoustic, c_vocoder);
+    LOGI("TTS: Creating with acoustic=%s, vocoder=%s, numThreads=%d",
+         c_acoustic, c_vocoder, (int)numThreads);
 
     SherpaOnnxOfflineTtsConfig config;
     memset(&config, 0, sizeof(config));
@@ -214,10 +215,11 @@ Java_com_rd_siri_tts_SherpaTtsEngine_nativeCreateTts(
     config.model.matcha.lexicon = c_lexicon;
     config.model.matcha.noise_scale = 0.667f;
     config.model.matcha.length_scale = 1.0f;
-    config.model.num_threads = 4;
+    config.model.num_threads = (int32_t)numThreads;
     config.model.provider = "cpu";
     config.model.debug = 0;
     config.max_num_sentences = 2;
+    config.silence_scale = 0.2f;
 
     const SherpaOnnxOfflineTts *tts = SherpaOnnxCreateOfflineTts(&config);
 

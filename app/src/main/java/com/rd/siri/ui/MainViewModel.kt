@@ -18,18 +18,19 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
         private const val TAG = "SiriApp"
+        private val SENTENCE_TERMINATORS = charArrayOf('。', '！', '？', '!', '?', '\n')
     }
 
     private val audioRecorder = AudioRecorder(application)
@@ -152,21 +153,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
 
-            // Stream LLM response
+            // Stream LLM response with real-time TTS
             Log.i(TAG, "stopListening: sending to LLM, text='$text'")
             val result = chatSession.sendStream(text)
             result.onSuccess { flow ->
-                val fullReply = StringBuilder()
                 streamingJob = viewModelScope.launch {
-                    flow.collect { token ->
-                        fullReply.append(token)
-                        _state.update { it.copy(assistantReply = fullReply.toString()) }
+                    val fullReply = StringBuilder()
+                    try {
+                        speakStream(flow, fullReply)
+                    } catch (e: kotlinx.coroutines.CancellationException) {
+                        // normal stop
+                    } catch (e: Exception) {
+                        Log.e(TAG, "stopListening: stream TTS failed", e)
                     }
                     val reply = fullReply.toString()
                     Log.i(TAG, "stopListening: LLM reply complete, len=${reply.length}")
                     chatSession.appendAssistantReply(reply)
-                    _state.update { it.copy(assistantReply = reply) }
-                    speakText(reply)
+                    _state.update { it.copy(voiceState = VoiceState.Idle, assistantReply = reply) }
                 }
             }.onFailure { e ->
                 Log.e(TAG, "stopListening: LLM request failed", e)
@@ -224,8 +227,93 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * Stream LLM tokens to TTS in real time.
+     *
+     * Detects complete sentences as tokens arrive and starts TTS synthesis
+     * immediately, overlapping LLM streaming with speech synthesis and playback.
+     *
+     * Three-stage pipeline (each stage runs concurrently):
+     *   1. Token collector  → detects sentence boundaries → feeds sentenceChannel
+     *   2. Synthesizer      → reads sentenceChannel → synthesizes → feeds pcmChannel
+     *   3. Player           → reads pcmChannel → plays audio
+     */
+    private suspend fun speakStream(
+        textFlow: Flow<String>,
+        accumulator: StringBuilder
+    ) {
+        val sampleRate = ttsEngine.getSampleRate()
+        val sentenceChannel = Channel<String>(Channel.UNLIMITED)
+        val pcmChannel = Channel<FloatArray>(Channel.BUFFERED)
+        var lastBoundary = 0  // index in accumulator already processed
+
+        _state.update { it.copy(voiceState = VoiceState.Speaking) }
+
+        coroutineScope {
+            // Stage 2: Synthesize sentences → PCM audio
+            val synthJob = launch(Dispatchers.IO) {
+                for (sentence in sentenceChannel) {
+                    val normalized = com.rd.siri.tts.TextNormalizer.normalize(sentence)
+                    if (normalized.isBlank()) continue
+                    Log.i(TAG, "speakStream: synthesizing '${normalized.take(40)}'")
+                    val pcm = ttsEngine.synthesize(normalized, sid = 0)
+                    if (pcm != null) {
+                        pcmChannel.send(pcm)
+                    }
+                }
+                pcmChannel.close()
+            }
+
+            // Stage 3: Play synthesized audio
+            val playerJob = launch(Dispatchers.IO) {
+                for (pcm in pcmChannel) {
+                    audioPlayer.play(pcm, sampleRate)
+                }
+            }
+
+            // Stage 1: Collect LLM tokens, detect complete sentences
+            try {
+                textFlow.collect { token ->
+                    accumulator.append(token)
+                    _state.update { it.copy(assistantReply = accumulator.toString()) }
+
+                    val text = accumulator.toString()
+                    while (lastBoundary < text.length) {
+                        var boundaryIdx = -1
+                        for (i in lastBoundary until text.length) {
+                            if (text[i] in SENTENCE_TERMINATORS) {
+                                boundaryIdx = i
+                                break
+                            }
+                        }
+                        if (boundaryIdx == -1) break
+
+                        val sentence = text.substring(lastBoundary, boundaryIdx + 1).trim()
+                        if (sentence.isNotBlank()) {
+                            sentenceChannel.send(sentence)
+                        }
+                        lastBoundary = boundaryIdx + 1
+                    }
+                }
+            } finally {
+                // Flush any remaining text (incomplete last sentence)
+                val remaining = accumulator.toString().substring(lastBoundary).trim()
+                if (remaining.isNotBlank()) {
+                    Log.i(TAG, "speakStream: flushing remaining '${remaining.take(40)}'")
+                    sentenceChannel.send(remaining)
+                }
+                sentenceChannel.close()
+            }
+
+            // Wait for synthesis and playback to finish
+            synthJob.join()
+            playerJob.join()
+        }
+    }
+
     fun stopSpeaking() {
         speakingJob?.cancel()
+        streamingJob?.cancel()
         audioPlayer.stop()
         _state.update { it.copy(voiceState = VoiceState.Idle) }
     }
@@ -249,7 +337,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     override fun onCleared() {
         super.onCleared()
         audioRecorder.stopRecording()
-        audioPlayer.stop()
+        audioPlayer.release()
         asrEngine.destroy()
         ttsEngine.destroy()
         recordingJob?.cancel()

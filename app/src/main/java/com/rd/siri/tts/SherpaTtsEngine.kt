@@ -35,12 +35,15 @@ class SherpaTtsEngine(private val context: Context) {
             return false
         }
 
-        Log.i(TAG, "TTS: initializing")
+        val numThreads = Runtime.getRuntime().availableProcessors().coerceIn(2, 8)
+
+        Log.i(TAG, "TTS: initializing with numThreads=$numThreads")
         statePtr = nativeCreateTts(
             acousticModel.absolutePath,
             vocoder.absolutePath,
             tokens.absolutePath,
-            lexicon.absolutePath
+            lexicon.absolutePath,
+            numThreads
         )
 
         isInitialized = statePtr != 0L
@@ -83,7 +86,8 @@ class SherpaTtsEngine(private val context: Context) {
         acousticModelPath: String,
         vocoderPath: String,
         tokensPath: String,
-        lexiconPath: String
+        lexiconPath: String,
+        numThreads: Int
     ): Long
 
     private external fun nativeSynthesize(
