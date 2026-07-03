@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -21,6 +22,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+data class SlotState(
+    val extracting: Boolean = false,
+    val progress: Float = 0f,
+    val error: String? = null
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModelSetupScreen(onReady: () -> Unit) {
@@ -34,11 +41,12 @@ fun ModelSetupScreen(onReady: () -> Unit) {
     var asrOk by remember { mutableStateOf(asrReady) }
     var ttsTarOk by remember { mutableStateOf(ttsTarReady) }
     var vocoderOk by remember { mutableStateOf(vocoderReady) }
-    var isExtracting by remember { mutableStateOf(false) }
-    var progress by remember { mutableStateOf(0f) }
-    var statusText by remember { mutableStateOf("") }
-    var errorText by remember { mutableStateOf<String?>(null) }
 
+    var asrSlot by remember { mutableStateOf(SlotState()) }
+    var ttsSlot by remember { mutableStateOf(SlotState()) }
+    var vocoderSlot by remember { mutableStateOf(SlotState()) }
+
+    val anyExtracting = asrSlot.extracting || ttsSlot.extracting || vocoderSlot.extracting
     val ttsOk = ttsTarOk && vocoderOk
     val allReady = asrOk && ttsOk
 
@@ -48,25 +56,16 @@ fun ModelSetupScreen(onReady: () -> Unit) {
     ) { uri: Uri? ->
         uri?.let {
             scope.launch {
-                isExtracting = true
-                errorText = null
-                statusText = "正在解压 ASR 模型..."
-                progress = 0f
+                asrSlot = SlotState(extracting = true)
                 val result = withContext(Dispatchers.IO) {
                     ModelManager.extractTar(context, it, ModelManager.ASR_MODEL_DIR) { p ->
-                        progress = p
+                        asrSlot = SlotState(extracting = true, progress = p)
                     }
                 }
                 result.fold(
-                    onSuccess = {
-                        asrOk = ModelManager.checkAsrReady(context)
-                        statusText = "ASR 模型就绪"
-                    },
-                    onFailure = { e ->
-                        errorText = "解压失败: ${e.message}"
-                    }
+                    onSuccess = { asrOk = ModelManager.checkAsrReady(context); asrSlot = SlotState() },
+                    onFailure = { e -> asrSlot = SlotState(error = "解压失败: ${e.message}") }
                 )
-                isExtracting = false
             }
         }
     }
@@ -77,25 +76,16 @@ fun ModelSetupScreen(onReady: () -> Unit) {
     ) { uri: Uri? ->
         uri?.let {
             scope.launch {
-                isExtracting = true
-                errorText = null
-                statusText = "正在解压 TTS 模型..."
-                progress = 0f
+                ttsSlot = SlotState(extracting = true)
                 val result = withContext(Dispatchers.IO) {
                     ModelManager.extractTar(context, it, ModelManager.TTS_MODEL_DIR) { p ->
-                        progress = p
+                        ttsSlot = SlotState(extracting = true, progress = p)
                     }
                 }
                 result.fold(
-                    onSuccess = {
-                        ttsTarOk = ModelManager.checkTtsExtracted(context)
-                        statusText = "TTS 模型就绪"
-                    },
-                    onFailure = { e ->
-                        errorText = "解压失败: ${e.message}"
-                    }
+                    onSuccess = { ttsTarOk = ModelManager.checkTtsExtracted(context); ttsSlot = SlotState() },
+                    onFailure = { e -> ttsSlot = SlotState(error = "解压失败: ${e.message}") }
                 )
-                isExtracting = false
             }
         }
     }
@@ -106,23 +96,16 @@ fun ModelSetupScreen(onReady: () -> Unit) {
     ) { uri: Uri? ->
         uri?.let {
             scope.launch {
-                isExtracting = true
-                errorText = null
-                statusText = "正在复制 vocoder..."
-                progress = 0f
+                vocoderSlot = SlotState(extracting = true)
                 val result = withContext(Dispatchers.IO) {
-                    ModelManager.copyVocoder(context, it) { p -> progress = p }
+                    ModelManager.copyVocoder(context, it) { p ->
+                        vocoderSlot = SlotState(extracting = true, progress = p)
+                    }
                 }
                 result.fold(
-                    onSuccess = {
-                        vocoderOk = ModelManager.checkVocoderReady(context)
-                        statusText = "Vocoder 就绪"
-                    },
-                    onFailure = { e ->
-                        errorText = "复制失败: ${e.message}"
-                    }
+                    onSuccess = { vocoderOk = ModelManager.checkVocoderReady(context); vocoderSlot = SlotState() },
+                    onFailure = { e -> vocoderSlot = SlotState(error = "复制失败: ${e.message}") }
                 )
-                isExtracting = false
             }
         }
     }
@@ -130,67 +113,46 @@ fun ModelSetupScreen(onReady: () -> Unit) {
     // ---- Download handlers ----
     fun downloadAsr() {
         scope.launch {
-            isExtracting = true
-            errorText = null
-            statusText = "正在下载 ASR 模型..."
-            progress = 0f
+            asrSlot = SlotState(extracting = true)
             val result = withContext(Dispatchers.IO) {
-                ModelManager.downloadAndExtractAsr(context) { p -> progress = p }
+                ModelManager.downloadAndExtractAsr(context) { p ->
+                    asrSlot = SlotState(extracting = true, progress = p)
+                }
             }
             result.fold(
-                onSuccess = {
-                    asrOk = ModelManager.checkAsrReady(context)
-                    statusText = "ASR 模型就绪"
-                },
-                onFailure = { e ->
-                    errorText = "下载失败: ${e.message}"
-                }
+                onSuccess = { asrOk = ModelManager.checkAsrReady(context); asrSlot = SlotState() },
+                onFailure = { e -> asrSlot = SlotState(error = "下载失败: ${e.message}") }
             )
-            isExtracting = false
         }
     }
 
     fun downloadTts() {
         scope.launch {
-            isExtracting = true
-            errorText = null
-            statusText = "正在下载 TTS 模型..."
-            progress = 0f
+            ttsSlot = SlotState(extracting = true)
             val result = withContext(Dispatchers.IO) {
-                ModelManager.downloadAndExtractTts(context) { p -> progress = p }
+                ModelManager.downloadAndExtractTts(context) { p ->
+                    ttsSlot = SlotState(extracting = true, progress = p)
+                }
             }
             result.fold(
-                onSuccess = {
-                    ttsTarOk = ModelManager.checkTtsExtracted(context)
-                    statusText = "TTS 模型就绪"
-                },
-                onFailure = { e ->
-                    errorText = "下载失败: ${e.message}"
-                }
+                onSuccess = { ttsTarOk = ModelManager.checkTtsExtracted(context); ttsSlot = SlotState() },
+                onFailure = { e -> ttsSlot = SlotState(error = "下载失败: ${e.message}") }
             )
-            isExtracting = false
         }
     }
 
     fun downloadVocoder() {
         scope.launch {
-            isExtracting = true
-            errorText = null
-            statusText = "正在下载 vocoder..."
-            progress = 0f
+            vocoderSlot = SlotState(extracting = true)
             val result = withContext(Dispatchers.IO) {
-                ModelManager.downloadVocoder(context) { p -> progress = p }
+                ModelManager.downloadVocoder(context) { p ->
+                    vocoderSlot = SlotState(extracting = true, progress = p)
+                }
             }
             result.fold(
-                onSuccess = {
-                    vocoderOk = ModelManager.checkVocoderReady(context)
-                    statusText = "Vocoder 就绪"
-                },
-                onFailure = { e ->
-                    errorText = "下载失败: ${e.message}"
-                }
+                onSuccess = { vocoderOk = ModelManager.checkVocoderReady(context); vocoderSlot = SlotState() },
+                onFailure = { e -> vocoderSlot = SlotState(error = "下载失败: ${e.message}") }
             )
-            isExtracting = false
         }
     }
 
@@ -208,7 +170,7 @@ fun ModelSetupScreen(onReady: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             Text(
-                "首次使用需要导入模型文件。\n可选择下载或从本地导入。",
+                "首次使用需下载/上传模型文件",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -238,62 +200,30 @@ fun ModelSetupScreen(onReady: () -> Unit) {
 
             // ASR model slot
             ModelSlotCard(
-                label = "ASR 语音识别模型",
-                description = "SenseVoiceSmall int8 量化版，~158 MB",
+                label = "ASR 模型",
                 isReady = asrOk,
-                isExtracting = isExtracting,
+                slot = asrSlot,
                 onSelect = { asrPicker.launch(arrayOf("application/x-tar", "application/octet-stream")) },
                 onDownload = { downloadAsr() }
             )
 
             // TTS model slot
             ModelSlotCard(
-                label = "TTS 语音合成模型",
-                description = "Matcha-TTS 中文，~72 MB",
+                label = "TTS 模型",
                 isReady = ttsTarOk,
-                isExtracting = isExtracting,
+                slot = ttsSlot,
                 onSelect = { ttsPicker.launch(arrayOf("application/x-tar", "application/octet-stream")) },
                 onDownload = { downloadTts() }
             )
 
             // Vocoder slot
             ModelSlotCard(
-                label = "Vocoder 声码器",
-                description = "通用声码器，~51 MB",
+                label = "Vocoder",
                 isReady = vocoderOk,
-                isExtracting = isExtracting,
+                slot = vocoderSlot,
                 onSelect = { vocoderPicker.launch(arrayOf("application/octet-stream", "*/*")) },
                 onDownload = { downloadVocoder() }
             )
-
-            // Progress
-            if (isExtracting) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()) {
-                    Text(statusText, style = MaterialTheme.typography.bodySmall)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        progress = progress,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-
-            // Error
-            errorText?.let {
-                Surface(
-                    color = MaterialTheme.colorScheme.errorContainer,
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        it,
-                        modifier = Modifier.padding(12.dp),
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
 
             Spacer(modifier = Modifier.weight(1f))
 
@@ -301,9 +231,11 @@ fun ModelSetupScreen(onReady: () -> Unit) {
             Button(
                 onClick = onReady,
                 modifier = Modifier.fillMaxWidth(),
-                enabled = allReady && !isExtracting
+                enabled = allReady && !anyExtracting,
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(vertical = 12.dp)
             ) {
-                Text("下一步")
+                Text("下一步", style = MaterialTheme.typography.titleMedium)
             }
         }
     }
@@ -312,54 +244,78 @@ fun ModelSetupScreen(onReady: () -> Unit) {
 @Composable
 private fun ModelSlotCard(
     label: String,
-    description: String,
     isReady: Boolean,
-    isExtracting: Boolean,
+    slot: SlotState,
     onSelect: () -> Unit,
     onDownload: (() -> Unit)? = null
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                if (isReady) Icons.Filled.CheckCircle else Icons.Filled.Warning,
-                contentDescription = null,
-                tint = if (isReady) Color(0xFF4CAF50) else Color(0xFFFF9800),
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(label, style = MaterialTheme.typography.titleSmall)
-                Text(
-                    description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    if (isReady) Icons.Filled.CheckCircle else Icons.Filled.Warning,
+                    contentDescription = null,
+                    tint = if (isReady) Color(0xFF4CAF50) else Color(0xFFFF9800),
+                    modifier = Modifier.size(24.dp)
                 )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(label, style = MaterialTheme.typography.titleSmall)
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            if (!isReady) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+
+            if (slot.extracting) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    "处理中 ${(slot.progress * 100).toInt()}%",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                if (slot.progress <= 0f) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                } else {
+                    LinearProgressIndicator(
+                        progress = slot.progress,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            } else if (!isReady) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     if (onDownload != null) {
                         Button(
                             onClick = onDownload,
-                            enabled = !isExtracting,
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(vertical = 8.dp)
                         ) {
-                            Text("下载", style = MaterialTheme.typography.labelMedium)
+                            Text("下载")
                         }
                     }
                     OutlinedButton(
                         onClick = onSelect,
-                        enabled = !isExtracting,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(vertical = 8.dp)
                     ) {
-                        Text("上传", style = MaterialTheme.typography.labelMedium)
+                        Text("上传")
                     }
                 }
+            }
+
+            // Per-slot error
+            slot.error?.let {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         }
     }
