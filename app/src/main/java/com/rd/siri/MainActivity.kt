@@ -44,10 +44,17 @@ class MainActivity : ComponentActivity() {
                 var modelsReady by remember {
                     mutableStateOf(ModelManager.checkAllReady(this@MainActivity))
                 }
+                val hasExistingConfig = configViewModel.config.value != null
+                var setupComplete by remember { mutableStateOf(hasExistingConfig) }
 
                 if (!modelsReady) {
                     ModelSetupScreen(
                         onReady = { modelsReady = true }
+                    )
+                } else if (!setupComplete) {
+                    SettingsScreen(
+                        viewModel = configViewModel,
+                        onBack = { setupComplete = true }
                     )
                 } else if (showSettings) {
                     SettingsScreen(

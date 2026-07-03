@@ -166,13 +166,19 @@ chmod +x download-models.sh
 - `matcha-icefall-zh-baker.tar`（TTS 声学模型）
 - `vocos-22khz-univ.onnx`（TTS 声码器）
 
+也可以跳过手动传输，直接在 App 内点击各模型 slot 的"下载"按钮，App 会自动下载并解压。
+
 ### 3. 安装运行
 
 ```bash
 adb install app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
 ```
 
-首次启动会显示**模型设置界面**，依次选择 ASR 的 `.tar`、TTS 的 `.tar`，以及 vocoder 的 `.onnx` 文件。App 会自动解压到私有存储目录，解压完成后点"开始使用"进入主界面。
+首次启动会显示**模型设置界面**，每个模型 slot 提供两种导入方式：
+- **下载**：App 直接从 GitHub Releases 下载并自动解压
+- **选择文件**：从手机本地选择已下载的模型文件上传
+
+解压完成后点"开始使用"进入主界面。
 
 ## 模型文件说明
 
@@ -182,6 +188,8 @@ SenseVoiceSmall int8 量化版（~158 MB 压缩），解压后包含：
 - `model.int8.onnx` — 识别模型
 - `tokens.txt` — 词表
 
+下载：[sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2025-09-09.tar.bz2](https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2025-09-09.tar.bz2)
+
 ### TTS - 语音合成
 
 Matcha-TTS 中文版（~88 MB 压缩）+ vocos 声码器（~52 MB），解压后包含：
@@ -189,6 +197,12 @@ Matcha-TTS 中文版（~88 MB 压缩）+ vocos 声码器（~52 MB），解压后
 - `vocos.onnx` — 声码器（单独上传 `vocos-22khz-univ.onnx`，自动重命名）
 - `tokens.txt` — 词表
 - `lexicon.txt` — 词典
+
+下载：[matcha-icefall-zh-baker.tar.bz2](https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-zh-baker.tar.bz2)
+
+### Vocoder - 声码器
+
+下载：[vocos-22khz-univ.onnx](https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-22khz-univ.onnx)
 
 ## 大模型配置
 

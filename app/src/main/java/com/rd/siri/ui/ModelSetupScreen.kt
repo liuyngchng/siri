@@ -21,14 +21,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-data class FileSlot(
-    val label: String,
-    val description: String,
-    val requiredFiles: List<String>,
-    val extractDest: String,
-    val mimeType: String
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModelSetupScreen(onReady: () -> Unit) {
@@ -36,19 +28,21 @@ fun ModelSetupScreen(onReady: () -> Unit) {
     val scope = rememberCoroutineScope()
 
     val asrReady = ModelManager.checkAsrReady(context)
-    val ttsReady = ModelManager.checkTtsReady(context)
+    val ttsTarReady = ModelManager.checkTtsExtracted(context)
+    val vocoderReady = ModelManager.checkVocoderReady(context)
 
     var asrOk by remember { mutableStateOf(asrReady) }
-    var ttsOk by remember { mutableStateOf(ttsReady) }
+    var ttsTarOk by remember { mutableStateOf(ttsTarReady) }
+    var vocoderOk by remember { mutableStateOf(vocoderReady) }
     var isExtracting by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf(0f) }
     var statusText by remember { mutableStateOf("") }
     var errorText by remember { mutableStateOf<String?>(null) }
-    var showVocoderSlot by remember { mutableStateOf(false) }
 
+    val ttsOk = ttsTarOk && vocoderOk
     val allReady = asrOk && ttsOk
 
-    // ASR picker
+    // ---- ASR picker ----
     val asrPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -77,7 +71,7 @@ fun ModelSetupScreen(onReady: () -> Unit) {
         }
     }
 
-    // TTS picker
+    // ---- TTS tar picker ----
     val ttsPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -94,14 +88,8 @@ fun ModelSetupScreen(onReady: () -> Unit) {
                 }
                 result.fold(
                     onSuccess = {
-                        ttsOk = ModelManager.checkTtsReady(context)
-                        if (ttsOk) {
-                            statusText = "TTS 模型就绪"
-                            showVocoderSlot = false
-                        } else {
-                            statusText = "TTS: 还需上传 vocoder"
-                            showVocoderSlot = true
-                        }
+                        ttsTarOk = ModelManager.checkTtsExtracted(context)
+                        statusText = "TTS 模型就绪"
                     },
                     onFailure = { e ->
                         errorText = "解压失败: ${e.message}"
@@ -112,7 +100,7 @@ fun ModelSetupScreen(onReady: () -> Unit) {
         }
     }
 
-    // Vocoder picker (for when TTS tar lacks vocos.onnx)
+    // ---- Vocoder picker ----
     val vocoderPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -127,13 +115,8 @@ fun ModelSetupScreen(onReady: () -> Unit) {
                 }
                 result.fold(
                     onSuccess = {
-                        ttsOk = ModelManager.checkTtsReady(context)
-                        if (ttsOk) {
-                            statusText = "TTS 模型就绪"
-                            showVocoderSlot = false
-                        } else {
-                            statusText = "TTS: 模型不完整"
-                        }
+                        vocoderOk = ModelManager.checkVocoderReady(context)
+                        statusText = "Vocoder 就绪"
                     },
                     onFailure = { e ->
                         errorText = "复制失败: ${e.message}"
@@ -141,6 +124,73 @@ fun ModelSetupScreen(onReady: () -> Unit) {
                 )
                 isExtracting = false
             }
+        }
+    }
+
+    // ---- Download handlers ----
+    fun downloadAsr() {
+        scope.launch {
+            isExtracting = true
+            errorText = null
+            statusText = "正在下载 ASR 模型..."
+            progress = 0f
+            val result = withContext(Dispatchers.IO) {
+                ModelManager.downloadAndExtractAsr(context) { p -> progress = p }
+            }
+            result.fold(
+                onSuccess = {
+                    asrOk = ModelManager.checkAsrReady(context)
+                    statusText = "ASR 模型就绪"
+                },
+                onFailure = { e ->
+                    errorText = "下载失败: ${e.message}"
+                }
+            )
+            isExtracting = false
+        }
+    }
+
+    fun downloadTts() {
+        scope.launch {
+            isExtracting = true
+            errorText = null
+            statusText = "正在下载 TTS 模型..."
+            progress = 0f
+            val result = withContext(Dispatchers.IO) {
+                ModelManager.downloadAndExtractTts(context) { p -> progress = p }
+            }
+            result.fold(
+                onSuccess = {
+                    ttsTarOk = ModelManager.checkTtsExtracted(context)
+                    statusText = "TTS 模型就绪"
+                },
+                onFailure = { e ->
+                    errorText = "下载失败: ${e.message}"
+                }
+            )
+            isExtracting = false
+        }
+    }
+
+    fun downloadVocoder() {
+        scope.launch {
+            isExtracting = true
+            errorText = null
+            statusText = "正在下载 vocoder..."
+            progress = 0f
+            val result = withContext(Dispatchers.IO) {
+                ModelManager.downloadVocoder(context) { p -> progress = p }
+            }
+            result.fold(
+                onSuccess = {
+                    vocoderOk = ModelManager.checkVocoderReady(context)
+                    statusText = "Vocoder 就绪"
+                },
+                onFailure = { e ->
+                    errorText = "下载失败: ${e.message}"
+                }
+            )
+            isExtracting = false
         }
     }
 
@@ -158,7 +208,7 @@ fun ModelSetupScreen(onReady: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             Text(
-                "首次使用需要导入模型文件。\n将下载好的 .tar 压缩包上传到手机后在此选择。",
+                "首次使用需要导入模型文件。\n可选择下载或从本地导入。",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -189,31 +239,32 @@ fun ModelSetupScreen(onReady: () -> Unit) {
             // ASR model slot
             ModelSlotCard(
                 label = "ASR 语音识别模型",
-                description = "SenseVoice 模型，需包含 model.int8.onnx 和 tokens.txt",
+                description = "SenseVoiceSmall int8 量化版，~158 MB",
                 isReady = asrOk,
                 isExtracting = isExtracting,
-                onSelect = { asrPicker.launch(arrayOf("application/x-tar", "application/octet-stream")) }
+                onSelect = { asrPicker.launch(arrayOf("application/x-tar", "application/octet-stream")) },
+                onDownload = { downloadAsr() }
             )
 
             // TTS model slot
             ModelSlotCard(
                 label = "TTS 语音合成模型",
-                description = "Matcha-TTS 模型 tar（含 model.onnx, tokens.txt, lexicon.txt）\n+ vocos-22khz-univ.onnx 声码器",
-                isReady = ttsOk,
+                description = "Matcha-TTS 中文，~72 MB",
+                isReady = ttsTarOk,
                 isExtracting = isExtracting,
-                onSelect = { ttsPicker.launch(arrayOf("application/x-tar", "application/octet-stream")) }
+                onSelect = { ttsPicker.launch(arrayOf("application/x-tar", "application/octet-stream")) },
+                onDownload = { downloadTts() }
             )
 
-            // Vocoder upload (only shown when tar extracted but vocos missing)
-            if (showVocoderSlot) {
-                ModelSlotCard(
-                    label = "Vocoder 声码器",
-                    description = "下载 vocos-22khz-univ.onnx 后在此上传",
-                    isReady = false,
-                    isExtracting = isExtracting,
-                    onSelect = { vocoderPicker.launch(arrayOf("application/octet-stream", "*/*")) }
-                )
-            }
+            // Vocoder slot
+            ModelSlotCard(
+                label = "Vocoder 声码器",
+                description = "通用声码器，~51 MB",
+                isReady = vocoderOk,
+                isExtracting = isExtracting,
+                onSelect = { vocoderPicker.launch(arrayOf("application/octet-stream", "*/*")) },
+                onDownload = { downloadVocoder() }
+            )
 
             // Progress
             if (isExtracting) {
@@ -252,7 +303,7 @@ fun ModelSetupScreen(onReady: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 enabled = allReady && !isExtracting
             ) {
-                Text("开始使用")
+                Text("下一步")
             }
         }
     }
@@ -264,7 +315,8 @@ private fun ModelSlotCard(
     description: String,
     isReady: Boolean,
     isExtracting: Boolean,
-    onSelect: () -> Unit
+    onSelect: () -> Unit,
+    onDownload: (() -> Unit)? = null
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -290,11 +342,23 @@ private fun ModelSlotCard(
             }
             Spacer(modifier = Modifier.width(8.dp))
             if (!isReady) {
-                OutlinedButton(
-                    onClick = onSelect,
-                    enabled = !isExtracting
-                ) {
-                    Text("选择文件")
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (onDownload != null) {
+                        Button(
+                            onClick = onDownload,
+                            enabled = !isExtracting,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Text("下载", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = onSelect,
+                        enabled = !isExtracting,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Text("上传", style = MaterialTheme.typography.labelMedium)
+                    }
                 }
             }
         }

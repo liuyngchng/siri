@@ -68,6 +68,11 @@ fun MainScreen(
         }
     }
 
+    // Re-check config on screen entry (e.g. returning from settings)
+    LaunchedEffect(Unit) {
+        viewModel.checkConfig()
+    }
+
     // Auto-scroll to bottom on new messages
     LaunchedEffect(messages.size, state.assistantReply) {
         if (messages.isNotEmpty()) {

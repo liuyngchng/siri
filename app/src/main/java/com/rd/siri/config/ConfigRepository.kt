@@ -3,7 +3,7 @@ package com.rd.siri.config
 import android.content.Context
 import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
+import androidx.security.crypto.MasterKey
 
 class ConfigRepository(context: Context) {
 
@@ -18,10 +18,13 @@ class ConfigRepository(context: Context) {
 
     private val prefs = run {
         Log.d(TAG, "ConfigRepository: creating EncryptedSharedPreferences")
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
         EncryptedSharedPreferences.create(
-            PREFS_NAME,
-            MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC),
             context,
+            PREFS_NAME,
+            masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
@@ -31,7 +34,7 @@ class ConfigRepository(context: Context) {
         val url = prefs.getString(KEY_API_URL, null) ?: return null
         val model = prefs.getString(KEY_MODEL, null) ?: return null
         val key = prefs.getString(KEY_API_KEY, null) ?: return null
-        val enableSearch = prefs.getBoolean(KEY_ENABLE_SEARCH, false)
+        val enableSearch = prefs.getBoolean(KEY_ENABLE_SEARCH, true)
         if (url.isBlank() || model.isBlank() || key.isBlank()) return null
         return LlmConfig(apiUrl = url, model = model, apiKey = key, enableSearch = enableSearch)
     }

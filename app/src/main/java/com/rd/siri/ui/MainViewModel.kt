@@ -65,7 +65,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun checkConfig(): Boolean {
         val hasConfig = configRepository.hasConfig
-        _state.update { it.copy(hasConfig = hasConfig) }
+        _state.update {
+            val newVoiceState = if (hasConfig && it.voiceState is VoiceState.Error
+                && it.voiceState.message.contains("配置 API")
+            ) {
+                VoiceState.Idle
+            } else {
+                it.voiceState
+            }
+            it.copy(hasConfig = hasConfig, voiceState = newVoiceState)
+        }
         return hasConfig
     }
 

@@ -44,15 +44,12 @@ fun SettingsScreen(
     var model by remember { mutableStateOf(config?.model ?: "") }
     var apiKey by remember { mutableStateOf(config?.apiKey ?: "") }
     var showKey by remember { mutableStateOf(false) }
-    var enableSearch by remember { mutableStateOf(config?.enableSearch ?: false) }
-
     // Load saved config on first composition
     LaunchedEffect(config) {
         config?.let {
             apiUrl = it.apiUrl
             model = it.model
             apiKey = it.apiKey
-            enableSearch = it.enableSearch
         }
     }
 
@@ -120,25 +117,6 @@ fun SettingsScreen(
                 }
             )
 
-            // Web search toggle — only effective with providers that support enable_search (e.g. Alibaba Bailian)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("启用联网搜索", style = MaterialTheme.typography.bodyLarge)
-                    Text(
-                        "需要 API 提供商支持（阿里百炼 Qwen 系列）",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = enableSearch,
-                    onCheckedChange = { enableSearch = it; viewModel.resetTestResult() }
-                )
-            }
-
             // Quick presets
             Text("快捷预设", style = MaterialTheme.typography.titleSmall)
             LazyRow(
@@ -193,7 +171,6 @@ fun SettingsScreen(
                         apiUrl = ""
                         model = ""
                         apiKey = ""
-                        enableSearch = false
                     },
                     modifier = Modifier.weight(1f)
                 ) { Text("清空") }
@@ -204,7 +181,7 @@ fun SettingsScreen(
                 ) { Text("测试连接") }
 
                 Button(
-                    onClick = { viewModel.saveConfig(apiUrl, model, apiKey, enableSearch) },
+                    onClick = { viewModel.saveConfig(apiUrl, model, apiKey, true) },
                     modifier = Modifier.weight(1f)
                 ) { Text("保存") }
             }
