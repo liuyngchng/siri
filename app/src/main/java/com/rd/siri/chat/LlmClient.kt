@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import android.util.Log
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -21,7 +22,11 @@ import java.util.concurrent.TimeUnit
 class LlmClient(private val configRepository: ConfigRepository) {
 
     companion object {
-        private const val SYSTEM_PROMPT = "你是安卓语音助手，请用简洁的口语化中文回答，回答控制在100字以内。"
+        private val SYSTEM_PROMPT: String
+            get() {
+                val now = java.text.SimpleDateFormat("yyyy年M月d日 EEEE", java.util.Locale.CHINESE).format(java.util.Date())
+                return "你是安卓语音助手，请用简洁的口语化中文回答，回答控制在100字以内。今天是$now。"
+            }
 
         private val JSON_MEDIA_TYPE = "application/json".toMediaType()
 
@@ -138,6 +143,10 @@ class LlmClient(private val configRepository: ConfigRepository) {
             put("max_tokens", params.maxTokens)
             put("temperature", params.temperature)
             put("top_p", params.topP)
+            if (config.enableSearch) {
+                Log.i("LlmClient", "联网搜索已启用")
+                put("enable_search", true)
+            }
         }.toString()
     }
 

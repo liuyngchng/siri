@@ -7,7 +7,7 @@
 #   chmod +x download-models.sh
 #   ./download-models.sh              # 下载全部
 #   ./download-models.sh --asr-only   # 仅下载 ASR 模型
-#   ./download-models.sh --tts-only   # 仅下载 TTS 模型 + vocoder
+#   ./download-models.sh --tts-only   # 仅下载 TTS 模型
 #
 # 总下载量: ~280 MB (ASR 158MB + TTS 72MB + vocoder 51MB)
 

@@ -13,6 +13,7 @@ class ConfigRepository(context: Context) {
         private const val KEY_API_URL = "api_url"
         private const val KEY_MODEL = "model"
         private const val KEY_API_KEY = "api_key"
+        private const val KEY_ENABLE_SEARCH = "enable_search"
     }
 
     private val prefs = run {
@@ -30,8 +31,9 @@ class ConfigRepository(context: Context) {
         val url = prefs.getString(KEY_API_URL, null) ?: return null
         val model = prefs.getString(KEY_MODEL, null) ?: return null
         val key = prefs.getString(KEY_API_KEY, null) ?: return null
+        val enableSearch = prefs.getBoolean(KEY_ENABLE_SEARCH, false)
         if (url.isBlank() || model.isBlank() || key.isBlank()) return null
-        return LlmConfig(apiUrl = url, model = model, apiKey = key)
+        return LlmConfig(apiUrl = url, model = model, apiKey = key, enableSearch = enableSearch)
     }
 
     fun saveConfig(config: LlmConfig) {
@@ -39,6 +41,7 @@ class ConfigRepository(context: Context) {
             .putString(KEY_API_URL, config.apiUrl.trimEnd('/'))
             .putString(KEY_MODEL, config.model.trim())
             .putString(KEY_API_KEY, config.apiKey.trim())
+            .putBoolean(KEY_ENABLE_SEARCH, config.enableSearch)
             .apply()
     }
 

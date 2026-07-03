@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -168,10 +169,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             try {
-                val pcm = ttsEngine.synthesize(text, sid = speakerId)
+                val pcm = withContext(Dispatchers.IO) {
+                    ttsEngine.synthesize(text, sid = speakerId)
+                }
                 if (pcm != null) {
                     Log.i(TAG, "speakReply: TTS done, pcm samples=${pcm.size}, playing")
-                    audioPlayer.play(pcm)
+                    audioPlayer.play(pcm, ttsEngine.getSampleRate())
                 } else {
                     Log.e(TAG, "speakReply: TTS returned null PCM")
                 }

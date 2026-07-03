@@ -3,7 +3,8 @@ package com.rd.siri.config
 data class LlmConfig(
     val apiUrl: String,
     val model: String,
-    val apiKey: String
+    val apiKey: String,
+    val enableSearch: Boolean = false
 ) {
     val baseUrl: String
         get() = apiUrl.trimEnd('/')

@@ -158,7 +158,7 @@ fun ModelSetupScreen(onReady: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             Text(
-                "首次使用需要导入模型文件。\n请将 .tar 文件上传到手机后在此选择。",
+                "首次使用需要导入模型文件。\n将下载好的 .tar 压缩包上传到手机后在此选择。",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -208,7 +208,7 @@ fun ModelSetupScreen(onReady: () -> Unit) {
             if (showVocoderSlot) {
                 ModelSlotCard(
                     label = "Vocoder 声码器",
-                    description = "下载 vocos-22khz-univ.onnx 后在此上传\nhttps://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-22khz-univ.onnx",
+                    description = "下载 vocos-22khz-univ.onnx 后在此上传",
                     isReady = false,
                     isExtracting = isExtracting,
                     onSelect = { vocoderPicker.launch(arrayOf("application/octet-stream", "*/*")) }
