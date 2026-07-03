@@ -169,8 +169,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             try {
+                val normalizedText = com.rd.siri.tts.TextNormalizer.normalize(text)
+                Log.i(TAG, "speakReply: normalized text='${normalizedText.take(80)}'")
                 val pcm = withContext(Dispatchers.IO) {
-                    ttsEngine.synthesize(text, sid = speakerId)
+                    ttsEngine.synthesize(normalizedText, sid = speakerId)
                 }
                 if (pcm != null) {
                     Log.i(TAG, "speakReply: TTS done, pcm samples=${pcm.size}, playing")
