@@ -15,6 +15,9 @@ import com.rd.siri.model.VoiceState
 import com.rd.siri.tts.SherpaTtsEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,12 +50,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         Log.i(TAG, "MainViewModel init start")
         viewModelScope.launch(Dispatchers.IO) {
-            Log.i(TAG, "ASR engine init start")
-            val asrReady = asrEngine.initialize()
+            _state.update { it.copy(voiceState = VoiceState.Loading("模型加载中…")) }
+
+            val asrDeferred = async { asrEngine.initialize() }
+            val ttsDeferred = async { ttsEngine.initialize() }
+
+            val asrReady = asrDeferred.await()
+            val ttsReady = ttsDeferred.await()
             Log.i(TAG, "ASR engine init done, ready=$asrReady")
-            Log.i(TAG, "TTS engine init start")
-            val ttsReady = ttsEngine.initialize()
             Log.i(TAG, "TTS engine init done, ready=$ttsReady")
+
             _state.update {
                 if (asrReady && ttsReady) {
                     it.copy(voiceState = VoiceState.Idle, enginesReady = true)
@@ -170,28 +177,45 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     /**
      * Speak text via TTS. Cancel any previous speech first.
+     * Synthesizes and plays sentence by sentence so the first audio starts sooner.
      */
     fun speakText(text: String) {
-        // Cancel any previous speech in progress
         speakingJob?.cancel()
         audioPlayer.stop()
 
-        Log.i(TAG, "speakReply: synthesizing, text='${text.take(80)}'")
         _state.update { it.copy(voiceState = VoiceState.Speaking) }
 
         speakingJob = viewModelScope.launch {
             try {
-                val normalizedText = com.rd.siri.tts.TextNormalizer.normalize(text)
-                Log.i(TAG, "speakReply: normalized text='${normalizedText.take(80)}'")
-                val pcm = withContext(Dispatchers.IO) {
-                    ttsEngine.synthesize(normalizedText, sid = 0)
+                val sentences = com.rd.siri.tts.TextNormalizer.splitSentences(text)
+                Log.i(TAG, "speakReply: ${sentences.size} sentences, text='${text.take(80)}'")
+                val sampleRate = ttsEngine.getSampleRate()
+                val channel = Channel<FloatArray>(Channel.BUFFERED)
+
+                coroutineScope {
+                    // Producer: synthesize sentences
+                    launch(Dispatchers.IO) {
+                        for (sentence in sentences) {
+                            val normalized = com.rd.siri.tts.TextNormalizer.normalize(sentence)
+                            if (normalized.isBlank()) continue
+                            Log.i(TAG, "speakReply: synthesizing sentence='${normalized.take(40)}'")
+                            val pcm = ttsEngine.synthesize(normalized, sid = 0)
+                            if (pcm != null) {
+                                channel.send(pcm)
+                            }
+                        }
+                        channel.close()
+                    }
+
+                    // Consumer: play synthesized audio
+                    launch(Dispatchers.IO) {
+                        for (pcm in channel) {
+                            audioPlayer.play(pcm, sampleRate)
+                        }
+                    }
                 }
-                if (pcm != null) {
-                    Log.i(TAG, "speakReply: TTS done, pcm samples=${pcm.size}, playing")
-                    audioPlayer.play(pcm, ttsEngine.getSampleRate())
-                } else {
-                    Log.e(TAG, "speakReply: TTS returned null PCM")
-                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // swallowed — normal stop
             } catch (e: Exception) {
                 Log.e(TAG, "speakReply: TTS failed", e)
             } finally {
@@ -204,6 +228,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         speakingJob?.cancel()
         audioPlayer.stop()
         _state.update { it.copy(voiceState = VoiceState.Idle) }
+    }
+
+    fun cancelListening() {
+        audioRecorder.stopRecording()
+        recordingJob?.cancel()
+        recordingJob = null
+        _state.update { it.copy(voiceState = VoiceState.Idle, partialAsrText = "") }
     }
 
     fun clearError() {

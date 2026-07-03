@@ -5,6 +5,8 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -25,8 +27,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -88,12 +94,12 @@ fun MainScreen(
                     // Clear history button
                     if (messages.isNotEmpty()) {
                         IconButton(onClick = { showClearDialog = true }) {
-                            Icon(Icons.Filled.Delete, contentDescription = "清除历史")
+                            Icon(Icons.Filled.Delete, contentDescription = "清除历史", modifier = Modifier.size(36.dp))
                         }
                     }
                     // Settings button
                     IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Filled.Settings, contentDescription = "设置")
+                        Icon(Icons.Filled.Settings, contentDescription = "设置", modifier = Modifier.size(36.dp))
                     }
                 }
             )
@@ -114,41 +120,10 @@ fun MainScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(vertical = 16.dp)
             ) {
-                // Loading indicator
-                if (state.voiceState is VoiceState.Loading) {
+                // Center status (loading / idle / error when no messages)
+                if (messages.isEmpty()) {
                     item {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 120.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            CircularProgressIndicator()
-                            Text(
-                                "模型加载中…",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-
-                // Idle hint
-                if (messages.isEmpty() && state.voiceState is VoiceState.Idle) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 120.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                "点击麦克风开始对话",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        StatusCenter(state.voiceState)
                     }
                 }
 
@@ -182,10 +157,7 @@ fun MainScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp
-                                )
+                                PulseRing(size = 16.dp, strokeWidth = 2.dp)
                                 Text(
                                     "思考中…",
                                     style = MaterialTheme.typography.bodySmall,
@@ -196,9 +168,6 @@ fun MainScreen(
                     }
                 }
             }
-
-            // State indicator
-            StatusBar(state)
 
             // Microphone button area
             MicButton(
@@ -212,6 +181,9 @@ fun MainScreen(
                     if (state.voiceState is VoiceState.Listening) {
                         viewModel.stopListening()
                     }
+                },
+                onPressCancel = {
+                    viewModel.cancelListening()
                 },
                 onStopSpeaking = {
                     viewModel.stopSpeaking()
@@ -285,38 +257,44 @@ private fun MessageBubble(message: ChatMessage, onLongPress: (() -> Unit)? = nul
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
-private fun StatusBar(state: AppState) {
+private fun StatusCenter(voiceState: VoiceState) {
     AnimatedContent(
-        targetState = state.voiceState,
+        targetState = voiceState,
         transitionSpec = {
             ContentTransform(fadeIn(), fadeOut())
         }
-    ) { voiceState ->
-        val text = when (voiceState) {
-            is VoiceState.Loading -> "模型加载中…"
-            is VoiceState.Idle -> "点击麦克风开始"
-            is VoiceState.Listening -> "正在聆听…"
-            is VoiceState.Recognizing -> "识别中…"
-            is VoiceState.Thinking -> "思考中…"
-            is VoiceState.Speaking -> "播报中…"
-            is VoiceState.Error -> voiceState.message
+    ) { state ->
+        val text = when (state) {
+            is VoiceState.Loading -> state.message
+            is VoiceState.Idle -> "按住麦克风开始说话"
+            is VoiceState.Error -> state.message
+            else -> ""
         }
 
-        val color = when (voiceState) {
+        val color = when (state) {
             is VoiceState.Error -> MaterialTheme.colorScheme.error
-            is VoiceState.Listening -> MaterialTheme.colorScheme.primary
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
 
-        Text(
-            text = text,
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodySmall,
-            color = color
-        )
+                .padding(top = 120.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            if (state is VoiceState.Loading) {
+                PulseRing(size = 48.dp, strokeWidth = 3.dp)
+            }
+            if (text.isNotBlank()) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = color,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
     }
 }
 
@@ -326,13 +304,16 @@ private fun MicButton(
     enabled: Boolean,
     onPressStart: () -> Unit,
     onPressEnd: () -> Unit,
+    onPressCancel: () -> Unit,
     onStopSpeaking: () -> Unit
 ) {
     val currentVoiceState by rememberUpdatedState(voiceState)
     val currentOnPressStart by rememberUpdatedState(onPressStart)
     val currentOnPressEnd by rememberUpdatedState(onPressEnd)
+    val currentOnPressCancel by rememberUpdatedState(onPressCancel)
     val currentOnStopSpeaking by rememberUpdatedState(onStopSpeaking)
 
+    val haptic = LocalHapticFeedback.current
     val isListening = voiceState is VoiceState.Listening
     val isProcessing = voiceState is VoiceState.Recognizing
         || voiceState is VoiceState.Thinking
@@ -351,20 +332,27 @@ private fun MicButton(
                 }
             },
             modifier = Modifier
-                .size(72.dp)
+                .size(108.dp)
                 .clip(CircleShape)
                 .pointerInput(enabled) {
                     if (!enabled) return@pointerInput
                     awaitPointerEventScope {
                         while (true) {
                             awaitFirstDown(requireUnconsumed = false)
+                            val downTime = System.currentTimeMillis()
                             val state = currentVoiceState
                             if (state is VoiceState.Idle) {
                                 currentOnPressStart()
                             }
                             waitForUpOrCancellation()
                             if (currentVoiceState is VoiceState.Listening) {
-                                currentOnPressEnd()
+                                val duration = System.currentTimeMillis() - downTime
+                                if (duration < 300) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    currentOnPressCancel()
+                                } else {
+                                    currentOnPressEnd()
+                                }
                             }
                         }
                     }
@@ -388,7 +376,7 @@ private fun MicButton(
                     isSpeaking -> "停止播报"
                     else -> "按住说话"
                 },
-                modifier = Modifier.size(32.dp),
+                modifier = Modifier.size(72.dp),
                 tint = when {
                     isSpeaking -> MaterialTheme.colorScheme.onError
                     isActive -> MaterialTheme.colorScheme.onPrimary
@@ -396,5 +384,37 @@ private fun MicButton(
                 }
             )
         }
+    }
+}
+
+@Composable
+private fun PulseRing(size: Dp, strokeWidth: Dp) {
+    val infiniteTransition = rememberInfiniteTransition()
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 0.7f,
+        targetValue = 1.3f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
+    val ringColor = MaterialTheme.colorScheme.primary
+
+    Canvas(modifier = Modifier.size(size)) {
+        drawCircle(
+            color = ringColor.copy(alpha = alpha),
+            radius = size.toPx() / 2,
+            style = Stroke(
+                width = strokeWidth.toPx() * scale
+            )
+        )
     }
 }

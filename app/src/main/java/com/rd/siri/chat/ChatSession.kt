@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 class ChatSession(private val llmClient: LlmClient) {
 
     companion object {
-        private const val MAX_HISTORY = 20
+        private const val MAX_HISTORY = 2
     }
 
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())

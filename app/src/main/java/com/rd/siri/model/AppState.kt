@@ -2,7 +2,7 @@ package com.rd.siri.model
 
 sealed class VoiceState {
     object Idle : VoiceState()
-    object Loading : VoiceState()
+    data class Loading(val message: String = "模型加载中…") : VoiceState()
     object Listening : VoiceState()
     object Recognizing : VoiceState()
     object Thinking : VoiceState()
@@ -11,7 +11,7 @@ sealed class VoiceState {
 }
 
 data class AppState(
-    val voiceState: VoiceState = VoiceState.Loading,
+    val voiceState: VoiceState = VoiceState.Loading(),
     val enginesReady: Boolean = false,
     val partialAsrText: String = "",
     val finalAsrText: String = "",

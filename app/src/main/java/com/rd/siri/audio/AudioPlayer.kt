@@ -5,6 +5,7 @@ import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 class AudioPlayer {
@@ -54,7 +55,7 @@ class AudioPlayer {
             track.play()
             // Wait for playback to complete (samples / sampleRate = seconds)
             val durationMs = (shortSamples.size.toLong() * 1000) / sampleRate
-            Thread.sleep(durationMs + 100)
+            delay(durationMs + 100)
             if (track.playState == AudioTrack.PLAYSTATE_PLAYING) {
                 track.stop()
             }
