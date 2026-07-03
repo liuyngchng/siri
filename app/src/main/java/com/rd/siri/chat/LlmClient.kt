@@ -25,7 +25,10 @@ class LlmClient(private val configRepository: ConfigRepository) {
         private val SYSTEM_PROMPT: String
             get() {
                 val now = java.text.SimpleDateFormat("yyyy年M月d日 EEEE", java.util.Locale.CHINESE).format(java.util.Date())
-                return "你是安卓语音助手，请用简洁的口语化中文回答，回答控制在100字以内。今天是$now。"
+                return "你是安卓语音助手，请用简洁的口语化中文回答，回答控制在100字以内。" +
+                    "当前日期是$now。你的知识截止日期远早于当前日期，" +
+                    "当用户问到与时间相关的问题（如赛程、天气、新闻），" +
+                    "必须以当前日期为基准，结合联网搜索结果来回答。"
             }
 
         private val JSON_MEDIA_TYPE = "application/json".toMediaType()
