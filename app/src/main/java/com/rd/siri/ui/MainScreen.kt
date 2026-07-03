@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -40,19 +41,30 @@ fun MainScreen(
     viewModel: MainViewModel,
     onNavigateToSettings: () -> Unit
 ) {
-    var speakerId by remember { mutableStateOf(viewModel.speakerId) }
     val state by viewModel.state.collectAsState()
     val messages by viewModel.chatSession.messages.collectAsState()
     val context = LocalContext.current
     val listState = rememberLazyListState()
     var showClearDialog by remember { mutableStateOf(false) }
 
+    val activity = context as? android.app.Activity
+
     // Permission launcher
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) {
-            viewModel.startListening()
+        if (!granted) {
+            activity?.finish()
+        }
+    }
+
+    // Request microphone permission on startup
+    LaunchedEffect(Unit) {
+        if (ContextCompat.checkSelfPermission(
+                context, Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
 
@@ -73,16 +85,6 @@ fun MainScreen(
                         IconButton(onClick = { showClearDialog = true }) {
                             Icon(Icons.Filled.Delete, contentDescription = "清除历史")
                         }
-                    }
-                    // Voice selector
-                    IconButton(onClick = {
-                        speakerId = viewModel.cycleSpeakerId()
-                    }) {
-                        Text(
-                            text = "V${speakerId}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
                     }
                     // Settings button
                     IconButton(onClick = onNavigateToSettings) {
@@ -147,7 +149,7 @@ fun MainScreen(
 
                 // Chat messages
                 items(messages) { msg ->
-                    MessageBubble(msg)
+                    MessageBubble(msg, onLongPress = { viewModel.speakText(msg.content) })
                 }
 
                 // Partial ASR text while listening
@@ -157,8 +159,7 @@ fun MainScreen(
                             ChatMessage(
                                 role = ChatMessage.Role.USER,
                                 content = state.partialAsrText + "…"
-                            ),
-                            isPartial = true
+                            )
                         )
                     }
                 }
@@ -198,19 +199,9 @@ fun MainScreen(
             MicButton(
                 voiceState = state.voiceState,
                 enabled = state.enginesReady,
-                hasPermission = ContextCompat.checkSelfPermission(
-                    context, Manifest.permission.RECORD_AUDIO
-                ) == PackageManager.PERMISSION_GRANTED,
                 onPressStart = {
-                    if (ContextCompat.checkSelfPermission(
-                            context, Manifest.permission.RECORD_AUDIO
-                        ) != PackageManager.PERMISSION_GRANTED
-                    ) {
-                        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                    } else {
-                        viewModel.checkConfig()
-                        viewModel.startListening()
-                    }
+                    viewModel.checkConfig()
+                    viewModel.startListening()
                 },
                 onPressEnd = {
                     if (state.voiceState is VoiceState.Listening) {
@@ -250,7 +241,7 @@ fun MainScreen(
 }
 
 @Composable
-private fun MessageBubble(message: ChatMessage, isPartial: Boolean = false) {
+private fun MessageBubble(message: ChatMessage, onLongPress: (() -> Unit)? = null) {
     val isUser = message.role == ChatMessage.Role.USER
 
     Row(
@@ -270,7 +261,14 @@ private fun MessageBubble(message: ChatMessage, isPartial: Boolean = false) {
         ) {
             Text(
                 text = message.content,
-                modifier = Modifier.padding(12.dp),
+                modifier = Modifier.padding(12.dp)
+                    .then(
+                        if (onLongPress != null) {
+                            Modifier.pointerInput(message.content) {
+                                detectTapGestures(onLongPress = { onLongPress() })
+                            }
+                        } else Modifier
+                    ),
                 style = MaterialTheme.typography.bodyLarge,
                 color = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer
                 else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -321,7 +319,6 @@ private fun StatusBar(state: AppState) {
 private fun MicButton(
     voiceState: VoiceState,
     enabled: Boolean,
-    hasPermission: Boolean,
     onPressStart: () -> Unit,
     onPressEnd: () -> Unit,
     onStopSpeaking: () -> Unit

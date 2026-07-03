@@ -29,8 +29,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private const val TAG = "SiriApp"
     }
 
-    var speakerId = 0
-
     private val audioRecorder = AudioRecorder(application)
     private val audioPlayer = AudioPlayer()
     private val asrEngine = SherpaAsrEngine(application)
@@ -44,6 +42,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private var recordingJob: Job? = null
     private var streamingJob: Job? = null
+    private var speakingJob: Job? = null
 
     init {
         Log.i(TAG, "MainViewModel init start")
@@ -151,7 +150,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     Log.i(TAG, "stopListening: LLM reply complete, len=${reply.length}")
                     chatSession.appendAssistantReply(reply)
                     _state.update { it.copy(assistantReply = reply) }
-                    speakReply(reply)
+                    speakText(reply)
                 }
             }.onFailure { e ->
                 Log.e(TAG, "stopListening: LLM request failed", e)
@@ -161,18 +160,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Speak the assistant's reply via TTS.
+     * Speak text via TTS. Cancel any previous speech first.
      */
-    private fun speakReply(text: String) {
+    fun speakText(text: String) {
+        // Cancel any previous speech in progress
+        speakingJob?.cancel()
+        audioPlayer.stop()
+
         Log.i(TAG, "speakReply: synthesizing, text='${text.take(80)}'")
         _state.update { it.copy(voiceState = VoiceState.Speaking) }
 
-        viewModelScope.launch {
+        speakingJob = viewModelScope.launch {
             try {
                 val normalizedText = com.rd.siri.tts.TextNormalizer.normalize(text)
                 Log.i(TAG, "speakReply: normalized text='${normalizedText.take(80)}'")
                 val pcm = withContext(Dispatchers.IO) {
-                    ttsEngine.synthesize(normalizedText, sid = speakerId)
+                    ttsEngine.synthesize(normalizedText, sid = 0)
                 }
                 if (pcm != null) {
                     Log.i(TAG, "speakReply: TTS done, pcm samples=${pcm.size}, playing")
@@ -189,13 +192,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun stopSpeaking() {
+        speakingJob?.cancel()
         audioPlayer.stop()
         _state.update { it.copy(voiceState = VoiceState.Idle) }
-    }
-
-    fun cycleSpeakerId(): Int {
-        speakerId = (speakerId + 1) % 10
-        return speakerId
     }
 
     fun clearError() {
@@ -215,5 +214,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         ttsEngine.destroy()
         recordingJob?.cancel()
         streamingJob?.cancel()
+        speakingJob?.cancel()
     }
 }
