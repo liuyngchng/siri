@@ -9,7 +9,7 @@
 import Foundation
 
 class ConfigRepository {
-    private let serviceName = "dev.SiriApp.llmConfig"
+    private let serviceName = "dev.richard.voicechat.llmConfig"
     private let accountName = "config"
 
     func getConfig() -> LlmConfig? {

@@ -1046,6 +1046,7 @@ if __name__ == "__main__":
 | DeepSeek API | https://platform.deepseek.com/api-docs | 大模型 API |
 | OpenAI API | https://platform.openai.com/docs | OpenAI 兼容接口参考 |
 | sherpa-onnx Android demo | sherpa-onnx/android/ 目录 | 官方 Android 示例工程 |
+| sherpa-onnx iOS 预编译包 | https://github.com/k2-fsa/sherpa-onnx/releases | 下载 `sherpa-onnx-v*-ios.tar.bz2` |
 | Android 12 行为变更 | https://developer.android.com/about/versions/12/behavior-changes-12 | 官方兼容性文档 |
 | Android 12 前台服务 | https://developer.android.com/about/versions/12/foreground-services | 前台服务限制 |
 | EncryptedSharedPreferences | https://developer.android.com/reference/androidx/security/crypto/EncryptedSharedPreferences | 加密存储 |
@@ -1066,4 +1067,37 @@ if __name__ == "__main__":
 
 ---
 
-*文档更新日期：2026-06-30*
+## 十、iOS Framework 设置
+
+iOS 端依赖两个预编译 framework，**不提交到 git**（已在 `.gitignore` 中忽略 `ios/Frameworks/`）：
+
+| Framework | 大小 | 说明 |
+|-----------|------|------|
+| `onnxruntime.xcframework` | ~126 MB | ONNX Runtime 推理引擎 |
+| `sherpa-onnx.xcframework` | ~61 MB | sherpa-onnx C API 封装 |
+
+### 下载方式
+
+运行项目根目录下的下载脚本：
+
+```bash
+chmod +x ios/download-frameworks.sh
+./ios/download-frameworks.sh
+```
+
+脚本从 [k2-fsa/sherpa-onnx GitHub Releases](https://github.com/k2-fsa/sherpa-onnx/releases) 下载 `sherpa-onnx-v1.13.3-ios.tar.bz2`，自动解压到 `ios/Frameworks/`。
+
+> **注意**：如果下载链接失效（sherpa-onnx 版本更新），请访问 [Releases 页面](https://github.com/k2-fsa/sherpa-onnx/releases) 找到最新的 iOS 包，更新脚本中的 `SHERPA_ONNX_VERSION` 和 `DOWNLOAD_URL`。
+
+### 手动下载
+
+如果脚本不可用，也可以手动操作：
+
+1. 访问 https://github.com/k2-fsa/sherpa-onnx/releases
+2. 下载 `sherpa-onnx-v*-ios.tar.bz2`
+3. 解压：`tar -xjf sherpa-onnx-v*-ios.tar.bz2`
+4. 将解压出的 `onnxruntime.xcframework` 和 `sherpa-onnx.xcframework` 移动到 `ios/Frameworks/`
+
+---
+
+*文档更新日期：2026-07-04*

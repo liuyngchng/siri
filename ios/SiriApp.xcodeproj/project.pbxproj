@@ -54,7 +54,7 @@
 		54C097292C3A4126AB02E69A /* SherpaAsrEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SherpaAsrEngine.swift; sourceTree = "<group>"; };
 		5CCAF64DCBA045C2A8EB00D5 /* ConfigRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigRepository.swift; sourceTree = "<group>"; };
 		6616447CD980402EA4814893 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
-		79C8059C2FF7DF6700A08F5B /* SiriApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SiriApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		79C8059C2FF7DF6700A08F5B /* VoiceChat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoiceChat.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		79C8059F2FF7DF6700A08F5B /* SiriAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiriAppApp.swift; sourceTree = "<group>"; };
 		79C805A12FF7DF6700A08F5B /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		79C805A32FF7DF6800A08F5B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -136,7 +136,7 @@
 		79C8059D2FF7DF6700A08F5B /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				79C8059C2FF7DF6700A08F5B /* SiriApp.app */,
+				79C8059C2FF7DF6700A08F5B /* VoiceChat.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -249,6 +249,7 @@
 				79C805982FF7DF6700A08F5B /* Sources */,
 				79C805992FF7DF6700A08F5B /* Frameworks */,
 				79C8059A2FF7DF6700A08F5B /* Resources */,
+				AF9C3B8CEBC14586B7926C5B /* Inject Info.plist Keys */,
 			);
 			buildRules = (
 			);
@@ -256,7 +257,7 @@
 			);
 			name = SiriApp;
 			productName = SiriApp;
-			productReference = 79C8059C2FF7DF6700A08F5B /* SiriApp.app */;
+			productReference = 79C8059C2FF7DF6700A08F5B /* VoiceChat.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -466,28 +467,27 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"SiriApp/Preview Content\"";
 				DEVELOPMENT_TEAM = 2XX528DY7X;
-				ENABLE_PREVIEWS = YES;
+				ENABLE_PREVIEWS = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Frameworks",
 				);
 				GENERATE_INFOPLIST_FILE = YES;
+					INFOPLIST_KEY_CFBundleDisplayName = "语音助手";
+					INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+					INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
+					INFOPLIST_KEY_NSMicrophoneUsageDescription = "需要使用麦克风进行语音识别";
+					INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+					INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+					INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+					INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+					INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Frameworks/sherpa-onnx.xcframework/ios-arm64/Headers",
 					"$(PROJECT_DIR)/Frameworks/onnxruntime.xcframework/ios-arm64/onnxruntime.framework/Headers",
 				);
-				INFOPLIST_KEY_CFBundleDisplayName = "语音助手";
-				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads = YES;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "需要使用麦克风进行语音识别";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UIBackgroundModes = audio;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -501,8 +501,8 @@
 					"-Wl,-U,_OBJC_CLASS_$_MLComputePlan",
 					"-Wl,-U,_OBJC_CLASS_$_MLOptimizationHints",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.SiriApp;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = dev.richard.voicechat;
+				PRODUCT_NAME = VoiceChat;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "SiriApp/SiriApp-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
@@ -522,28 +522,27 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"SiriApp/Preview Content\"";
 				DEVELOPMENT_TEAM = 2XX528DY7X;
-				ENABLE_PREVIEWS = YES;
+				ENABLE_PREVIEWS = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Frameworks",
 				);
 				GENERATE_INFOPLIST_FILE = YES;
+					INFOPLIST_KEY_CFBundleDisplayName = "语音助手";
+					INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+					INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
+					INFOPLIST_KEY_NSMicrophoneUsageDescription = "需要使用麦克风进行语音识别";
+					INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+					INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+					INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+					INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+					INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Frameworks/sherpa-onnx.xcframework/ios-arm64/Headers",
 					"$(PROJECT_DIR)/Frameworks/onnxruntime.xcframework/ios-arm64/onnxruntime.framework/Headers",
 				);
-				INFOPLIST_KEY_CFBundleDisplayName = "语音助手";
-				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads = YES;
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "需要使用麦克风进行语音识别";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UIBackgroundModes = audio;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -557,8 +556,8 @@
 					"-Wl,-U,_OBJC_CLASS_$_MLComputePlan",
 					"-Wl,-U,_OBJC_CLASS_$_MLOptimizationHints",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.SiriApp;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = dev.richard.voicechat;
+				PRODUCT_NAME = VoiceChat;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "SiriApp/SiriApp-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
@@ -593,6 +592,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		AF9C3B8CEBC14586B7926C5B /* Inject Info.plist Keys */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "Inject Info.plist Keys (ATS + Export Compliance)";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/InfoPlistInjected.stamp",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Add NSAppTransportSecurity + ITSAppUsesNonExemptEncryption to generated Info.plist\n# These keys cannot be set via INFOPLIST_KEY_ in Xcode 14.2\nPLIST=\"$TARGET_BUILD_DIR/$INFOPLIST_PATH\"\n\nif [ -f \"$PLIST\" ]; then\n    # Add ITSAppUsesNonExemptEncryption (skip if already exists)\n    if ! /usr/libexec/PlistBuddy -c \"Print :ITSAppUsesNonExemptEncryption\" \"$PLIST\" &>/dev/null; then\n        /usr/libexec/PlistBuddy -c \"Add :ITSAppUsesNonExemptEncryption bool false\" \"$PLIST\"\n        echo \"Added ITSAppUsesNonExemptEncryption = NO\"\n    fi\n\n    # Add NSAppTransportSecurity dict (skip if already exists)\n    if ! /usr/libexec/PlistBuddy -c \"Print :NSAppTransportSecurity\" \"$PLIST\" &>/dev/null; then\n        /usr/libexec/PlistBuddy -c \"Add :NSAppTransportSecurity dict\" \"$PLIST\"\n        /usr/libexec/PlistBuddy -c \"Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true\" \"$PLIST\"\n        echo \"Added NSAppTransportSecurity with NSAllowsLocalNetworking = YES\"\n    fi\nfi";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 	};
 	rootObject = 79C805942FF7DF6700A08F5B /* Project object */;
 }

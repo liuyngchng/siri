@@ -35,7 +35,7 @@ struct MessageBubble: View {
                             ? Color.blue
                             : Color(.systemGray5))
                 )
-                .frame(maxWidth: UIScreen.main.bounds.width * 0.72)
+                .frame(maxWidth: UIScreen.main.bounds.width * 0.72, alignment: isUser ? .trailing : .leading)
                 .contextMenu {
                     if onLongPress != nil {
                         Button(action: { onLongPress?() }) {
@@ -46,6 +46,7 @@ struct MessageBubble: View {
 
             if !isUser { Spacer(minLength: 60) }
         }
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, 4)
     }
 

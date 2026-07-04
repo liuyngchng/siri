@@ -45,5 +45,8 @@ ios/Pods/
 # Swift Package Manager
 **/.swiftpm/
 
+# iOS pre-compiled frameworks (downloaded via ios/download-frameworks.sh)
+ios/Frameworks/
+
 # Test
 */test-results/

@@ -99,12 +99,23 @@ struct ModelSetupScreen: View {
 
     @StateObject private var modelManager = ModelManager()
 
-    @State private var asrOk: Bool = ModelManager.checkAsrReady()
-    @State private var ttsTarOk: Bool = ModelManager.checkTtsExtracted()
-    @State private var vocoderOk: Bool = ModelManager.checkVocoderReady()
-
     @State private var sheetTarget: ModelSheetTarget? = nil
     @State private var errorMessage: String? = nil
+
+    /// Derived from modelManager state — always reflects current reality,
+    /// avoids the @State + onChange sync gap that can miss updates.
+    private var asrOk: Bool {
+        if case .completed = modelManager.asrState { return true }
+        return ModelManager.checkAsrReady()
+    }
+    private var ttsTarOk: Bool {
+        if case .completed = modelManager.ttsState { return true }
+        return ModelManager.checkTtsExtracted()
+    }
+    private var vocoderOk: Bool {
+        if case .completed = modelManager.vocoderState { return true }
+        return ModelManager.checkVocoderReady()
+    }
 
     private var ttsOk: Bool { ttsTarOk && vocoderOk }
     private var allReady: Bool { asrOk && ttsOk }
@@ -178,26 +189,6 @@ struct ModelSetupScreen: View {
             .sheet(item: $sheetTarget) { makeFilePicker(for: $0) }
             .alert(isPresented: Binding<Bool>(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
                 Alert(title: Text("导入失败"), message: Text(errorMessage ?? ""), dismissButton: .default(Text("好")))
-            }
-            .onChange(of: modelManager.asrState) { newState in
-                if case .completed = newState {
-                    pickerLog.info("onChange: asrState → completed, checkAsrReady=\(ModelManager.checkAsrReady())")
-                    asrOk = ModelManager.checkAsrReady()
-                }
-            }
-            .onChange(of: modelManager.ttsState) { newState in
-                if case .completed = newState {
-                    pickerLog.info("onChange: ttsState → completed, checkTtsExtracted=\(ModelManager.checkTtsExtracted())")
-                    ttsTarOk = ModelManager.checkTtsExtracted()
-                }
-            }
-            .onChange(of: modelManager.vocoderState) { newState in
-                pickerLog.info("onChange: vocoderState → \(String(describing: newState))")
-                if case .completed = newState {
-                    let ready = ModelManager.checkVocoderReady()
-                    pickerLog.info("checkVocoderReady → \(ready), path=\(ModelManager.ttsModelDirURL().appendingPathComponent("vocos.onnx").path)")
-                    vocoderOk = ready
-                }
             }
         }
         .navigationViewStyle(.stack)

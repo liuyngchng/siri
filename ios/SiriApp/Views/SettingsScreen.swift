@@ -16,6 +16,8 @@ struct SettingsScreen: View {
     @State private var model: String = ""
     @State private var apiKey: String = ""
     @State private var showKey: Bool = false
+    @State private var showHttpWarning: Bool = false
+    @State private var pendingSave: Bool = false
 
     var body: some View {
         NavigationView {
@@ -30,7 +32,21 @@ struct SettingsScreen: View {
                             .keyboardType(.URL)
                             .autocapitalization(.none)
                             .disableAutocorrection(true)
-                            .onChange(of: apiUrl) { _ in viewModel.resetTestResult() }
+                            .onChange(of: apiUrl) { _ in
+                                viewModel.resetTestResult()
+                                showHttpWarning = apiUrl.hasPrefix("http://")
+                            }
+                    }
+
+                    if showHttpWarning {
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                                .font(.caption)
+                            Text("HTTP 明文传输存在安全风险，API 密钥可能被窃取，强烈建议使用 HTTPS")
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                        }
                     }
 
                     HStack {
@@ -68,6 +84,7 @@ struct SettingsScreen: View {
                             Button(action: {
                                 apiUrl = preset.apiUrl
                                 model = preset.model
+                                showHttpWarning = apiUrl.hasPrefix("http://")
                                 viewModel.resetTestResult()
                             }) {
                                 HStack {
@@ -169,7 +186,12 @@ struct SettingsScreen: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("保存") {
-                        viewModel.saveConfig(apiUrl, model, apiKey)
+                        if apiUrl.hasPrefix("http://") {
+                            showHttpWarning = true
+                            pendingSave = true
+                        } else {
+                            viewModel.saveConfig(apiUrl, model, apiKey)
+                        }
                     }
                     .disabled(apiUrl.isEmpty || model.isEmpty || apiKey.isEmpty)
                 }
@@ -179,9 +201,20 @@ struct SettingsScreen: View {
                     apiUrl = config.apiUrl
                     model = config.model
                     apiKey = config.apiKey
+                    showHttpWarning = config.apiUrl.hasPrefix("http://")
                 }
             }
         }
         .navigationViewStyle(.stack)
+        .alert(isPresented: $pendingSave) {
+            Alert(
+                title: Text("安全警告"),
+                message: Text("你使用的是 HTTP 明文连接，API 密钥将以明文方式传输，存在被窃取的风险。\n\n建议使用 HTTPS 连接。\n\n是否仍然保存？"),
+                primaryButton: .destructive(Text("仍然保存"), action: {
+                    viewModel.saveConfig(apiUrl, model, apiKey)
+                }),
+                secondaryButton: .cancel(Text("取消"))
+            )
+        }
     }
 }
