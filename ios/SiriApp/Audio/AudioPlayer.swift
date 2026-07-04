@@ -91,12 +91,18 @@ class AudioPlayer {
         os_log(.info, "AudioPlayer: playing %d samples at %.0f Hz", pcmFloats.count, sampleRate)
     }
 
-    /// Stop playback immediately
+    /// Stop playback immediately.
+    /// Also stops the underlying AVAudioEngine so other components (e.g.,
+    /// AudioRecorder) can start their own engine without conflict.
     func stop() {
         if playerNode.isPlaying {
             playerNode.stop()
         }
         engine.disconnectNodeOutput(playerNode)
+        if engine.isRunning {
+            engine.stop()
+            engineStarted = false
+        }
         isPlaying = false
         completionCallback?()
         completionCallback = nil
