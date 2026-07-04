@@ -142,25 +142,21 @@ struct SettingsScreen: View {
 
                 // MARK: - 操作
                 Section {
-                    HStack(spacing: 16) {
-                        Button(action: {
-                            viewModel.testConnection(apiUrl, model, apiKey)
-                        }) {
-                            Label("测试连接", systemImage: "network")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .disabled(apiUrl.isEmpty || model.isEmpty || apiKey.isEmpty)
+                    Button(action: {
+                        viewModel.testConnection(apiUrl, model, apiKey)
+                    }) {
+                        Label("测试连接", systemImage: "network")
+                    }
+                    .disabled(apiUrl.isEmpty || model.isEmpty || apiKey.isEmpty)
 
-                        Button(action: {
-                            viewModel.clearConfig()
-                            apiUrl = ""
-                            model = ""
-                            apiKey = ""
-                        }) {
-                            Label("清空配置", systemImage: "trash")
-                                .foregroundColor(.red)
-                                .frame(maxWidth: .infinity)
-                        }
+                    Button(action: {
+                        viewModel.clearConfig()
+                        apiUrl = ""
+                        model = ""
+                        apiKey = ""
+                    }) {
+                        Label("清空配置", systemImage: "trash")
+                            .foregroundColor(.red)
                     }
                 }
             }
