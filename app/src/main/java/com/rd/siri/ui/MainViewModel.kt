@@ -99,7 +99,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        // Stop any ongoing TTS playback when user starts speaking
+        // Clear screen content and stop any ongoing TTS playback
+        chatSession.clear()
         stopSpeaking()
 
         Log.i(TAG, "startListening: begin recording")
