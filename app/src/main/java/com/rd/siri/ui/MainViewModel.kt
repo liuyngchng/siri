@@ -99,6 +99,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
+        // Stop any ongoing TTS playback when user starts speaking
+        stopSpeaking()
+
         Log.i(TAG, "startListening: begin recording")
         _state.update { it.copy(voiceState = VoiceState.Listening, partialAsrText = "", finalAsrText = "") }
 
@@ -252,16 +255,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         coroutineScope {
             // Stage 2: Synthesize sentences → PCM audio
             val synthJob = launch(Dispatchers.IO) {
-                for (sentence in sentenceChannel) {
-                    val normalized = com.rd.siri.tts.TextNormalizer.normalize(sentence)
-                    if (normalized.isBlank()) continue
-                    Log.i(TAG, "speakStream: synthesizing '${normalized.take(40)}'")
-                    val pcm = ttsEngine.synthesize(normalized, sid = 0)
-                    if (pcm != null) {
-                        pcmChannel.send(pcm)
+                try {
+                    for (sentence in sentenceChannel) {
+                        val normalized = com.rd.siri.tts.TextNormalizer.normalize(sentence)
+                        if (normalized.isBlank()) continue
+                        Log.i(TAG, "speakStream: synthesizing '${normalized.take(40)}'")
+                        val pcm = ttsEngine.synthesize(normalized, sid = 0)
+                        if (pcm != null) {
+                            pcmChannel.send(pcm)
+                        }
                     }
+                } finally {
+                    pcmChannel.close()
                 }
-                pcmChannel.close()
             }
 
             // Stage 3: Play synthesized audio

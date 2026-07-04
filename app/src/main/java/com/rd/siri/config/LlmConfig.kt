@@ -4,7 +4,8 @@ data class LlmConfig(
     val apiUrl: String,
     val model: String,
     val apiKey: String,
-    val enableSearch: Boolean = true
+    val enableSearch: Boolean = true,
+    val searchParamName: String = "enable_search"
 ) {
     val baseUrl: String
         get() = apiUrl.trimEnd('/')

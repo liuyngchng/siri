@@ -39,7 +39,7 @@ class ConfigViewModel(application: Application) : AndroidViewModel(application) 
         .readTimeout(15, TimeUnit.SECONDS)
         .build()
 
-    fun saveConfig(apiUrl: String, model: String, apiKey: String, enableSearch: Boolean = false) {
+    fun saveConfig(apiUrl: String, model: String, apiKey: String, enableSearch: Boolean = false, searchParamName: String = "enable_search") {
         val trimmedUrl = apiUrl.trim().trimEnd('/')
         val trimmedModel = model.trim()
         val trimmedKey = apiKey.trim()
@@ -54,7 +54,7 @@ class ConfigViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
 
-        val newConfig = LlmConfig(trimmedUrl, trimmedModel, trimmedKey, enableSearch)
+        val newConfig = LlmConfig(trimmedUrl, trimmedModel, trimmedKey, enableSearch, searchParamName)
         repository.saveConfig(newConfig)
         _config.value = newConfig
         _testResult.value = ConnectionTestResult.Success("配置已保存")
