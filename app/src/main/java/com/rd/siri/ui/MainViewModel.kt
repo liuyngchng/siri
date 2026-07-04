@@ -288,7 +288,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         }
                         if (boundaryIdx == -1) break
 
-                        val sentence = text.substring(lastBoundary, boundaryIdx + 1).trim()
+                        val sentence = text.substring(lastBoundary, boundaryIdx).trim()
                         if (sentence.isNotBlank()) {
                             sentenceChannel.send(sentence)
                         }
