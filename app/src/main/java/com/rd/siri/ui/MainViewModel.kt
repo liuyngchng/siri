@@ -99,6 +99,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
+        // Clear screen content and stop any ongoing TTS playback
+        chatSession.clear()
+        stopSpeaking()
+
         Log.i(TAG, "startListening: begin recording")
         _state.update { it.copy(voiceState = VoiceState.Listening, partialAsrText = "", finalAsrText = "") }
 
@@ -252,16 +256,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         coroutineScope {
             // Stage 2: Synthesize sentences → PCM audio
             val synthJob = launch(Dispatchers.IO) {
-                for (sentence in sentenceChannel) {
-                    val normalized = com.rd.siri.tts.TextNormalizer.normalize(sentence)
-                    if (normalized.isBlank()) continue
-                    Log.i(TAG, "speakStream: synthesizing '${normalized.take(40)}'")
-                    val pcm = ttsEngine.synthesize(normalized, sid = 0)
-                    if (pcm != null) {
-                        pcmChannel.send(pcm)
+                try {
+                    for (sentence in sentenceChannel) {
+                        val normalized = com.rd.siri.tts.TextNormalizer.normalize(sentence)
+                        if (normalized.isBlank()) continue
+                        Log.i(TAG, "speakStream: synthesizing '${normalized.take(40)}'")
+                        val pcm = ttsEngine.synthesize(normalized, sid = 0)
+                        if (pcm != null) {
+                            pcmChannel.send(pcm)
+                        }
                     }
+                } finally {
+                    pcmChannel.close()
                 }
-                pcmChannel.close()
             }
 
             // Stage 3: Play synthesized audio
@@ -288,7 +295,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         }
                         if (boundaryIdx == -1) break
 
-                        val sentence = text.substring(lastBoundary, boundaryIdx + 1).trim()
+                        val sentence = text.substring(lastBoundary, boundaryIdx).trim()
                         if (sentence.isNotBlank()) {
                             sentenceChannel.send(sentence)
                         }

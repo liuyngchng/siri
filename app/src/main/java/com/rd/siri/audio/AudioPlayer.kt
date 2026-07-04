@@ -12,17 +12,14 @@ class AudioPlayer {
     companion object {
         const val CHANNEL_CONFIG = AudioFormat.CHANNEL_OUT_MONO
         const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
-        /** Max buffer: 30 seconds of audio at 48kHz (worst case). */
-        private const val MAX_BUFFER_SECONDS = 30
     }
 
-    private var audioTrack: AudioTrack? = null
-    private var currentSampleRate: Int = 0
+    private var activeTrack: AudioTrack? = null
     private var isPlaying = false
 
     /**
-     * Play PCM float audio. Reuses the underlying AudioTrack across calls
-     * to avoid per-sentence creation overhead.
+     * Play PCM float audio. Creates a fresh AudioTrack per sentence — no buffer
+     * reuse, so stale data from a previous sentence can never leak into playback.
      */
     suspend fun play(pcmFloats: FloatArray, sampleRate: Int = 22050) = withContext(Dispatchers.IO) {
         val shortSamples = ShortArray(pcmFloats.size) { i ->
@@ -31,55 +28,10 @@ class AudioPlayer {
                 .toShort()
         }
 
-        val bufferSizeInBytes = shortSamples.size * 2
-        val track = obtainTrack(sampleRate, bufferSizeInBytes)
-
-        isPlaying = true
-
-        try {
-            // Write all samples (MODE_STATIC: overwrites internal buffer from position 0)
-            track.write(shortSamples, 0, shortSamples.size)
-            track.play()
-
-            // Wait for playback to finish — poll playState so we stop
-            // as soon as the audio is done instead of using a fixed delay.
-            val durationMs = (shortSamples.size.toLong() * 1000) / sampleRate
-            awaitPlaybackComplete(track, durationMs)
-        } finally {
-            isPlaying = false
-            // Don't release — keep AudioTrack for next sentence
-        }
-    }
-
-    /**
-     * Get or create an AudioTrack that can hold at least [minBufferBytes].
-     * Reuses the existing track when the sample rate matches and the
-     * buffer is large enough.
-     */
-    private fun obtainTrack(sampleRate: Int, minBufferBytes: Int): AudioTrack {
-        val existing = audioTrack
-        if (existing != null &&
-            existing.sampleRate == sampleRate &&
-            existing.state == AudioTrack.STATE_INITIALIZED
-        ) {
-            // Check current buffer capacity (2 bytes per PCM16 sample)
-            val currentCap = existing.bufferSizeInFrames * 2
-            if (currentCap >= minBufferBytes) {
-                // Reuse — just stop whatever was playing
-                if (existing.playState == AudioTrack.PLAYSTATE_PLAYING) {
-                    existing.stop()
-                }
-                return existing
-            }
-            // Buffer too small, release and recreate below
-            existing.release()
-            audioTrack = null
-        }
-
-        existing?.release()
-
-        // Allocate with generous headroom so we rarely need to recreate.
-        val bufferSize = maxOf(minBufferBytes, sampleRate * 2 * MAX_BUFFER_SECONDS)
+        val bufferSizeInBytes = maxOf(
+            shortSamples.size * 2,
+            AudioTrack.getMinBufferSize(sampleRate, CHANNEL_CONFIG, AUDIO_FORMAT)
+        )
 
         val track = AudioTrack.Builder()
             .setAudioAttributes(
@@ -95,32 +47,40 @@ class AudioPlayer {
                     .setChannelMask(CHANNEL_CONFIG)
                     .build()
             )
-            .setBufferSizeInBytes(bufferSize)
+            .setBufferSizeInBytes(bufferSizeInBytes)
             .setTransferMode(AudioTrack.MODE_STATIC)
             .build()
 
-        currentSampleRate = sampleRate
-        audioTrack = track
-        return track
+        activeTrack = track
+        isPlaying = true
+
+        try {
+            track.write(shortSamples, 0, shortSamples.size)
+            track.play()
+
+            val durationMs = (shortSamples.size.toLong() * 1000) / sampleRate
+            awaitPlaybackComplete(track, durationMs)
+        } finally {
+            isPlaying = false
+            activeTrack = null
+            track.release()
+        }
     }
 
     /**
      * Wait for playback to complete, polling playState with short intervals.
-     * This is more responsive than a fixed delay — playback continues to
-     * the next sentence as soon as the current one finishes.
      */
     private suspend fun awaitPlaybackComplete(track: AudioTrack, durationMs: Long) {
-        val deadline = durationMs + 200  // reasonable upper bound
+        val deadline = durationMs + 500
         var elapsed = 0L
         while (elapsed < deadline) {
             if (track.playState != AudioTrack.PLAYSTATE_PLAYING) {
-                return  // finished early
+                return
             }
             val sleepMs = minOf(50L, deadline - elapsed).coerceAtLeast(10L)
             delay(sleepMs)
             elapsed += sleepMs
         }
-        // Timed out — force stop
         if (track.playState == AudioTrack.PLAYSTATE_PLAYING) {
             track.stop()
         }
@@ -128,19 +88,16 @@ class AudioPlayer {
 
     fun stop() {
         isPlaying = false
-        audioTrack?.apply {
+        activeTrack?.apply {
             if (playState == AudioTrack.PLAYSTATE_PLAYING) {
                 stop()
             }
         }
     }
 
-    /**
-     * Fully release audio resources. Call when the player is no longer needed.
-     */
     fun release() {
         isPlaying = false
-        audioTrack?.release()
-        audioTrack = null
+        activeTrack?.release()
+        activeTrack = null
     }
 }

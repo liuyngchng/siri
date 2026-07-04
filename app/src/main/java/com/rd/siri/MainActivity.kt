@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,8 +45,8 @@ class MainActivity : ComponentActivity() {
                 var modelsReady by remember {
                     mutableStateOf(ModelManager.checkAllReady(this@MainActivity))
                 }
-                val hasExistingConfig = configViewModel.config.value != null
-                var setupComplete by remember { mutableStateOf(hasExistingConfig) }
+                val config by configViewModel.config.collectAsState()
+                var setupComplete by remember { mutableStateOf(config != null) }
 
                 if (!modelsReady) {
                     ModelSetupScreen(

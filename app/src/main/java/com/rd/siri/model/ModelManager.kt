@@ -83,7 +83,7 @@ object ModelManager {
             val totalSize = getSize(context, uri)
             var bytesRead = 0L
 
-            context.contentResolver.openInputStream(uri)?.use { input ->
+            context.contentResolver.openInputStream(uri)?.use outer@{ input ->
                 ZipInputStream(input).use { zis ->
                     var entry = zis.nextEntry
                     while (entry != null) {
@@ -101,7 +101,7 @@ object ModelManager {
                                 }
                             }
                             Log.i(TAG, "AAR: extracted $NATIVE_LIB to ${destFile.absolutePath}")
-                            return@use Result.success(Unit)
+                            return@outer Result.success(Unit)
                         }
                         zis.closeEntry()
                         entry = zis.nextEntry

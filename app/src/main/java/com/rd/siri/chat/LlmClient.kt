@@ -22,14 +22,18 @@ import java.util.concurrent.TimeUnit
 class LlmClient(private val configRepository: ConfigRepository) {
 
     companion object {
-        private val SYSTEM_PROMPT: String
-            get() {
-                val now = java.text.SimpleDateFormat("yyyy年M月d日 EEEE", java.util.Locale.CHINESE).format(java.util.Date())
-                return "你是安卓语音助手，请用简洁的口语化中文回答，回答控制在100字以内。" +
-                    "当前日期是$now。你的知识截止日期远早于当前日期，" +
-                    "当用户问到与时间相关的问题（如赛程、天气、新闻），" +
-                    "必须以当前日期为基准，结合联网搜索结果来回答。"
+        private fun buildSystemPrompt(enableSearch: Boolean): String {
+            val now = java.text.SimpleDateFormat("yyyy年M月d日 EEEE", java.util.Locale.CHINESE).format(java.util.Date())
+            val base = "你是安卓语音助手，请用简洁的口语化中文回答，回答控制在100字以内。" +
+                "当前日期是$now。"
+            return if (enableSearch) {
+                base + "你已启用联网搜索，获取到的实时信息会直接提供给你。" +
+                    "对于需要最新数据的问题（赛程、天气、新闻、股价等），务必基于搜索结果回答。" +
+                    "严禁说你无法搜索或不支持联网——搜索是系统自动完成的。"
+            } else {
+                base + "如果用户问到你不了解的事，直接说不知道即可。"
             }
+        }
 
         private val JSON_MEDIA_TYPE = "application/json".toMediaType()
 
@@ -129,7 +133,7 @@ class LlmClient(private val configRepository: ConfigRepository) {
 
         msgArray.put(JSONObject().apply {
             put("role", "system")
-            put("content", SYSTEM_PROMPT)
+            put("content", buildSystemPrompt(config.enableSearch))
         })
 
         for (msg in messages) {
@@ -146,9 +150,9 @@ class LlmClient(private val configRepository: ConfigRepository) {
             put("max_tokens", params.maxTokens)
             put("temperature", params.temperature)
             put("top_p", params.topP)
-            if (config.enableSearch) {
-                Log.i("LlmClient", "联网搜索已启用")
-                put("enable_search", true)
+            if (config.enableSearch && config.searchParamName.isNotBlank()) {
+                Log.i("LlmClient", "联网搜索已启用, param=${config.searchParamName}")
+                put(config.searchParamName, true)
             }
         }.toString()
     }
