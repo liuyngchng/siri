@@ -20,7 +20,7 @@ class SherpaTtsEngine {
     static let defaultSpeed: Float = 1.0
     static let defaultSampleRate: Int32 = 22050
 
-    private var ttsPtr: UnsafeMutableRawPointer?
+    private var tts: OpaquePointer?
     private var isInitialized = false
 
     init(documentsDir: URL) {
@@ -31,12 +31,8 @@ class SherpaTtsEngine {
     var isReady: Bool { isInitialized }
 
     var sampleRate: Int32 {
-        guard isInitialized else { return SherpaTtsEngine.defaultSampleRate }
-
-        // === sherpa-onnx C API call ===
-        // return SherpaOnnxOfflineTtsSampleRate(ttsPtr)
-
-        return SherpaTtsEngine.defaultSampleRate
+        guard isInitialized, let tts = tts else { return SherpaTtsEngine.defaultSampleRate }
+        return SherpaOnnxOfflineTtsSampleRate(tts)
     }
 
     func initialize() -> Bool {
@@ -57,27 +53,35 @@ class SherpaTtsEngine {
 
         os_log(.info, "TTS: initializing")
 
-        // === sherpa-onnx C API call ===
-        // When sherpa-onnx xcframework/SPM is added and bridging header imports c-api.h:
-        //
-        // var config = SherpaOnnxOfflineTtsConfig()
-        // memset(&config, 0, MemoryLayout<SherpaOnnxOfflineTtsConfig>.size)
-        // config.model.matcha.acoustic_model = strdup(acPath)
-        // config.model.matcha.vocoder = strdup(vcPath)
-        // config.model.matcha.tokens = strdup(tkPath)
-        // config.model.matcha.lexicon = strdup(lxPath)
-        // config.model.matcha.noise_scale = 0.667
-        // config.model.matcha.length_scale = 1.0
-        // config.model.num_threads = 4
-        // config.model.provider = strdup("cpu")
-        // config.max_num_sentences = 2
-        //
-        // ttsPtr = UnsafeMutableRawPointer(SherpaOnnxCreateOfflineTts(&config))
-        // isInitialized = ttsPtr != nil
+        var config = SherpaOnnxOfflineTtsConfig()
+        memset(&config, 0, MemoryLayout<SherpaOnnxOfflineTtsConfig>.size)
 
-        // STUB: Mark as initialized for now
-        os_log(.info, "TTS: sherpa-onnx framework not yet linked; engine stub initialized")
-        isInitialized = true
+        let acPtr = strdup(acPath)
+        let vcPtr = strdup(vcPath)
+        let tkPtr = strdup(tkPath)
+        let lxPtr = strdup(lxPath)
+        let providerPtr = strdup("cpu")
+
+        config.model.matcha.acoustic_model = UnsafePointer(acPtr)
+        config.model.matcha.vocoder = UnsafePointer(vcPtr)
+        config.model.matcha.tokens = UnsafePointer(tkPtr)
+        config.model.matcha.lexicon = UnsafePointer(lxPtr)
+        config.model.matcha.noise_scale = 0.667
+        config.model.matcha.length_scale = 1.0
+        config.model.num_threads = 4
+        config.model.provider = UnsafePointer(providerPtr)
+        config.max_num_sentences = 2
+
+        tts = SherpaOnnxCreateOfflineTts(&config)
+
+        // Free strdup'd strings
+        free(acPtr)
+        free(vcPtr)
+        free(tkPtr)
+        free(lxPtr)
+        free(providerPtr)
+
+        isInitialized = tts != nil
 
         if isInitialized {
             os_log(.info, "TTS: initialized OK, sample_rate=%d", sampleRate)
@@ -88,45 +92,43 @@ class SherpaTtsEngine {
     }
 
     func synthesize(text: String, speed: Float = defaultSpeed, sid: Int = 0) -> [Float]? {
-        guard isInitialized else { return nil }
+        guard isInitialized, let tts = tts else { return nil }
 
         os_log(.info, "TTS: synthesizing %d chars, speed=%.2f", text.count, speed)
 
-        // === sherpa-onnx C API call ===
-        // var genConfig = SherpaOnnxGenerationConfig()
-        // memset(&genConfig, 0, MemoryLayout<SherpaOnnxGenerationConfig>.size)
-        // genConfig.sid = Int32(sid)
-        // genConfig.speed = speed
-        //
-        // let audio = SherpaOnnxOfflineTtsGenerateWithConfig(
-        //     ttsPtr, text, &genConfig, nil, nil
-        // )
-        //
-        // guard let audio = audio, audio.pointee.n > 0, let samples = audio.pointee.samples else {
-        //     if let audio = audio {
-        //         SherpaOnnxDestroyOfflineTtsGeneratedAudio(audio)
-        //     }
-        //     return nil
-        // }
-        //
-        // let n = Int(audio.pointee.n)
-        // let result = Array(UnsafeBufferPointer(start: samples, count: n))
-        // SherpaOnnxDestroyOfflineTtsGeneratedAudio(audio)
-        // os_log(.info, "TTS: synthesized %d samples at %d Hz", n, audio.pointee.sample_rate)
-        // return result
+        var genConfig = SherpaOnnxGenerationConfig()
+        memset(&genConfig, 0, MemoryLayout<SherpaOnnxGenerationConfig>.size)
+        genConfig.sid = Int32(sid)
+        genConfig.speed = speed
 
-        // STUB: Return empty array
-        os_log(.info, "TTS: synthesize stub (sherpa-onnx not linked)")
-        return nil
+        let audio = text.withCString { textPtr in
+            SherpaOnnxOfflineTtsGenerateWithConfig(
+                tts, textPtr, &genConfig, nil, nil
+            )
+        }
+
+        guard let audio = audio, audio.pointee.n > 0, let samples = audio.pointee.samples else {
+            if let audio = audio {
+                SherpaOnnxDestroyOfflineTtsGeneratedAudio(audio)
+            }
+            os_log(.error, "TTS: generation produced no audio")
+            return nil
+        }
+
+        let n = Int(audio.pointee.n)
+        let result = Array(UnsafeBufferPointer(start: samples, count: n))
+        let sr = audio.pointee.sample_rate
+        SherpaOnnxDestroyOfflineTtsGeneratedAudio(audio)
+
+        os_log(.info, "TTS: synthesized %d samples at %d Hz", n, sr)
+        return result
     }
 
     func destroy() {
-        guard isInitialized else { return }
+        guard isInitialized, let tts = tts else { return }
 
-        // === sherpa-onnx C API call ===
-        // SherpaOnnxDestroyOfflineTts(ttsPtr)
-
-        ttsPtr = nil
+        SherpaOnnxDestroyOfflineTts(tts)
+        self.tts = nil
         isInitialized = false
         os_log(.info, "TTS: destroyed")
     }

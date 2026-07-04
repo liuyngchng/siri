@@ -61,7 +61,8 @@ struct MainScreen: View {
                             }
                         }
                         .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                        .padding(.top, 8)
+                        .padding(.bottom, 24)
                     }
                     .onChange(of: viewModel.messages.count) { _ in
                         if let last = viewModel.messages.last?.id {
@@ -99,6 +100,7 @@ struct MainScreen: View {
                         viewModel.stopSpeaking()
                     }
                 )
+                .padding(.top, 16)
                 .padding(.bottom, 32)
             }
             .background(Color(.systemBackground))
@@ -110,13 +112,13 @@ struct MainScreen: View {
                         if !viewModel.messages.isEmpty {
                             Button(action: { showClearDialog = true }) {
                                 Image(systemName: "trash")
-                                    .font(.body)
+                                    .font(.title2)
                             }
                         }
                         // Settings
                         Button(action: onNavigateToSettings) {
                             Image(systemName: "gearshape")
-                                .font(.body)
+                                .font(.title2)
                         }
                     }
                 }

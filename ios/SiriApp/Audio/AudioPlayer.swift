@@ -16,17 +16,10 @@ class AudioPlayer {
 
     private var isPlaying = false
     private var completionCallback: (() -> Void)?
+    private var engineStarted = false
 
     init() {
         engine.attach(playerNode)
-        engine.connect(playerNode, to: engine.mainMixerNode, format: nil)
-
-        do {
-            try engine.start()
-        } catch {
-            os_log(.error, "AudioPlayer: engine start failed: %{public}@",
-                   error.localizedDescription)
-        }
     }
 
     /// Play PCM float samples at given sample rate.
@@ -47,6 +40,24 @@ class AudioPlayer {
             os_log(.error, "AudioPlayer: failed to create audio format")
             completion?()
             return
+        }
+
+        // Connect with the correct mono format
+        engine.disconnectNodeOutput(playerNode)
+        engine.connect(playerNode, to: engine.mainMixerNode, format: format)
+
+        // Start engine lazily — must happen AFTER connect, or the dangling
+        // playerNode will crash AVAudioEngineGraph::Initialize.
+        if !engineStarted {
+            do {
+                try engine.start()
+                engineStarted = true
+            } catch {
+                os_log(.error, "AudioPlayer: engine start failed: %{public}@",
+                       error.localizedDescription)
+                completion?()
+                return
+            }
         }
 
         let frameLength = AVAudioFrameCount(pcmFloats.count)
@@ -85,6 +96,7 @@ class AudioPlayer {
         if playerNode.isPlaying {
             playerNode.stop()
         }
+        engine.disconnectNodeOutput(playerNode)
         isPlaying = false
         completionCallback?()
         completionCallback = nil

@@ -41,14 +41,14 @@ struct MicButton: View {
         ZStack {
             // Pulse animation when listening
             if isActive {
-                PulseRing(size: 130, strokeWidth: 3, color: .blue)
+                PulseRing(size: 104, strokeWidth: 3, color: .blue)
             }
 
             // Main button
             Image(systemName: iconName)
-                .font(.system(size: 36))
+                .font(.system(size: 29))
                 .foregroundColor(iconColor)
-                .frame(width: 108, height: 108)
+                .frame(width: 86, height: 86)
                 .background(backgroundColor)
                 .clipShape(Circle())
                 // DragGesture(minimumDistance: 0) detects touch-down immediately,
@@ -71,6 +71,12 @@ struct MicButton: View {
                             }
                         }
                         .onEnded { _ in
+                            // Tap while speaking → stop TTS
+                            if isSpeaking {
+                                onStopSpeaking()
+                                return
+                            }
+
                             guard isPressing else { return }
                             isPressing = false
 
@@ -88,12 +94,6 @@ struct MicButton: View {
                             pressStartTime = nil
                         }
                 )
-                // Tap to stop speaking (only when speaking)
-                .onTapGesture {
-                    if isSpeaking {
-                        onStopSpeaking()
-                    }
-                }
                 .disabled(!enabled && !isSpeaking)
                 .opacity(enabled || isSpeaking ? 1.0 : 0.5)
         }

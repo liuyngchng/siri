@@ -17,6 +17,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         os_log(.info, "AppDelegate: didFinishLaunching")
+        configureNavigationBar()
         configureAudioSession()
         return true
     }
@@ -33,6 +34,17 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     func applicationWillTerminate(_ application: UIApplication) {
         os_log(.info, "AppDelegate: willTerminate")
         AudioSessionManager.deactivate()
+    }
+
+    /// Make the navigation bar opaque so scroll content doesn't bleed through it.
+    private func configureNavigationBar() {
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = .systemBackground
+        UINavigationBar.appearance().standardAppearance = appearance
+        if #available(iOS 15.0, *) {
+            UINavigationBar.appearance().scrollEdgeAppearance = appearance
+        }
     }
 
     private func configureAudioSession() {

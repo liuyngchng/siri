@@ -10,7 +10,17 @@ import Foundation
 import Combine
 
 class ChatSession: ObservableObject {
+    /// Messages shown on screen — cleared when a new recording starts.
     @Published private(set) var messages: [ChatMessage] = []
+
+    /// LLM context buffer — preserved across screen clears so the model
+    /// remembers previous turns. Never cleared except by user action.
+    private var contextBuffer: [ChatMessage] = []
+
+    /// Context window for LLM — last N messages from the full context buffer.
+    private var contextMessages: [ChatMessage] {
+        Array(contextBuffer.suffix(maxHistory))
+    }
 
     private let llmClient: LlmClient
     private let maxHistory: Int
@@ -24,16 +34,18 @@ class ChatSession: ObservableObject {
     /// Send message (non-streaming)
     func send(_ text: String) -> AnyPublisher<String, Error> {
         let userMsg = ChatMessage(role: .user, content: text)
-        messages = Array((messages + [userMsg]).suffix(maxHistory))
+        messages.append(userMsg)
+        contextBuffer.append(userMsg)
 
-        return llmClient.chat(messages: messages)
+        return llmClient.chat(messages: contextMessages)
             .handleEvents(receiveOutput: { [weak self] reply in
                 let assistantMsg = ChatMessage(role: .assistant, content: reply)
-                self?.messages = Array(((self?.messages ?? []) + [assistantMsg]).suffix(self?.maxHistory ?? 10))
+                self?.messages.append(assistantMsg)
+                self?.contextBuffer.append(assistantMsg)
             }, receiveCompletion: { [weak self] completion in
                 if case .failure = completion {
-                    // Remove user message on failure
                     self?.messages.removeLast()
+                    self?.contextBuffer.removeLast()
                 }
             })
             .eraseToAnyPublisher()
@@ -42,10 +54,10 @@ class ChatSession: ObservableObject {
     /// Send message with streaming (iOS 14+)
     func sendStream(_ text: String) -> AnyPublisher<AnyPublisher<String, Error>, Error> {
         let userMsg = ChatMessage(role: .user, content: text)
-        messages = Array((messages + [userMsg]).suffix(maxHistory))
+        messages.append(userMsg)
+        contextBuffer.append(userMsg)
 
-        // Return the stream publisher wrapped
-        let streamPublisher = llmClient.chatStreamPublisher(messages: messages)
+        let streamPublisher = llmClient.chatStreamPublisher(messages: contextMessages)
         return Just(streamPublisher)
             .setFailureType(to: Error.self)
             .eraseToAnyPublisher()
@@ -54,12 +66,20 @@ class ChatSession: ObservableObject {
     /// Save assistant reply to history (called after streaming completes)
     func appendAssistantReply(_ text: String) {
         guard text.isNotBlank else { return }
-        let assistantMsg = ChatMessage(role: .assistant, content: text)
-        messages = Array((messages + [assistantMsg]).suffix(maxHistory))
+        let msg = ChatMessage(role: .assistant, content: text)
+        messages.append(msg)
+        contextBuffer.append(msg)
     }
 
+    /// Clear screen only — LLM context is preserved.
+    func clearScreen() {
+        messages = []
+    }
+
+    /// Full clear — both screen and LLM context (user-initiated).
     func clear() {
         messages = []
+        contextBuffer = []
     }
 
     var messageCount: Int {

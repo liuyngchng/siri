@@ -91,6 +91,9 @@ class MainViewModel: ObservableObject {
             return
         }
 
+        // Clear screen for new conversation; LLM context is preserved
+        chatSession.clearScreen()
+
         AudioSessionManager.configure()
 
         os_log(.info, "MainVM: start listening")

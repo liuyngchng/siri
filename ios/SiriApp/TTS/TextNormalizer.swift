@@ -588,7 +588,30 @@ enum TextNormalizer {
             }
         }
 
-        // Step 11: Decimal: 3.14 → 三点一四
+        // Step 11: Time HH:MM: 8:00 → 八点, 19:35 → 十九点三十五分, 08:05 → 八点零五分
+        if let regex = try? NSRegularExpression(
+            pattern: "(\\d{1,2}):(\\d{2})(?!\\d)"
+        ) {
+            let nsString = result as NSString
+            let matches = regex.matches(in: result, range: NSRange(location: 0, length: nsString.length))
+            for match in matches.reversed() {
+                let hourStr = nsString.substring(with: match.range(at: 1))
+                let minuteStr = nsString.substring(with: match.range(at: 2))
+                let minute = Int(minuteStr) ?? 0
+                let chHour = numberToChinese(hourStr)
+                let replacement: String
+                if minute == 0 {
+                    replacement = chHour + "点"
+                } else if minute < 10 {
+                    replacement = chHour + "点零" + numberToChinese(String(minute)) + "分"
+                } else {
+                    replacement = chHour + "点" + numberToChinese(String(minute)) + "分"
+                }
+                result = nsString.replacingCharacters(in: match.range, with: replacement)
+            }
+        }
+
+        // Step 12: Decimal: 3.14 → 三点一四
         if let regex = try? NSRegularExpression(pattern: "(\\d+)\\.(\\d+)") {
             let nsString = result as NSString
             let matches = regex.matches(in: result, range: NSRange(location: 0, length: nsString.length))
@@ -602,7 +625,7 @@ enum TextNormalizer {
             }
         }
 
-        // Step 12: Remaining standalone integers
+        // Step 13: Remaining standalone integers
         if let regex = try? NSRegularExpression(pattern: "\\d+") {
             let nsString = result as NSString
             let matches = regex.matches(in: result, range: NSRange(location: 0, length: nsString.length))
@@ -612,7 +635,7 @@ enum TextNormalizer {
             }
         }
 
-        // Step 13: Remaining English letters
+        // Step 14: Remaining English letters
         if let regex = try? NSRegularExpression(pattern: "[a-zA-Z]+") {
             let nsString = result as NSString
             let matches = regex.matches(in: result, range: NSRange(location: 0, length: nsString.length))
@@ -622,7 +645,7 @@ enum TextNormalizer {
             }
         }
 
-        // Step 14: Replace tildes, dashes
+        // Step 15: Replace tildes, dashes
         if let regex = try? NSRegularExpression(pattern: "[~～\\-—−]") {
             result = regex.stringByReplacingMatches(
                 in: result,
@@ -631,7 +654,7 @@ enum TextNormalizer {
             )
         }
 
-        // Step 15: Collapse whitespace
+        // Step 16: Collapse whitespace
         if let regex = try? NSRegularExpression(pattern: "\\s+") {
             result = regex.stringByReplacingMatches(
                 in: result,

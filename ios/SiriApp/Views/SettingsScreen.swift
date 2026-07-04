@@ -25,9 +25,8 @@ struct SettingsScreen: View {
                         footer: Text("兼容 OpenAI chat/completions 接口")) {
                     HStack {
                         Text("地址")
-                        Spacer()
+                            .frame(width: 40, alignment: .leading)
                         TextField("https://api.deepseek.com/v1", text: $apiUrl)
-                            .multilineTextAlignment(.trailing)
                             .keyboardType(.URL)
                             .autocapitalization(.none)
                             .disableAutocorrection(true)
@@ -36,9 +35,8 @@ struct SettingsScreen: View {
 
                     HStack {
                         Text("模型")
-                        Spacer()
+                            .frame(width: 40, alignment: .leading)
                         TextField("deepseek-v4-flash", text: $model)
-                            .multilineTextAlignment(.trailing)
                             .autocapitalization(.none)
                             .disableAutocorrection(true)
                             .onChange(of: model) { _ in viewModel.resetTestResult() }
@@ -46,18 +44,17 @@ struct SettingsScreen: View {
 
                     HStack {
                         Text("密钥")
-                        Spacer()
+                            .frame(width: 40, alignment: .leading)
                         if showKey {
                             TextField("sk-...", text: $apiKey)
-                                .multilineTextAlignment(.trailing)
                         } else {
                             SecureField("sk-...", text: $apiKey)
-                                .multilineTextAlignment(.trailing)
                         }
                         Button(action: { showKey.toggle() }) {
                             Image(systemName: showKey ? "eye.slash" : "eye")
                                 .foregroundColor(.secondary)
                         }
+                        .buttonStyle(.borderless)
                     }
                     .autocapitalization(.none)
                     .disableAutocorrection(true)
@@ -87,61 +84,78 @@ struct SettingsScreen: View {
                 }
 
                 // MARK: - 连接测试结果
-                Section {
-                    switch viewModel.testResult {
-                    case .testing:
-                        HStack {
-                            ProgressView()
-                            Text("正在测试连接...")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                    case .success(let msg):
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                            Text(msg)
-                                .font(.subheadline)
-                                .foregroundColor(.green)
-                        }
-                    case .failure(let msg):
-                        VStack(alignment: .leading, spacing: 4) {
+                if case .idle = viewModel.testResult {
+                    EmptyView()
+                } else {
+                    Section {
+                        switch viewModel.testResult {
+                        case .testing:
                             HStack {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.red)
-                                Text("连接失败")
+                                ProgressView()
+                                Text("正在测试连接...")
                                     .font(.subheadline)
-                                    .foregroundColor(.red)
+                                    .foregroundColor(.secondary)
                             }
-                            Text(msg)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                        case .success(let msg):
+                            HStack {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                                Text(msg)
+                                    .font(.subheadline)
+                                    .foregroundColor(.green)
+                            }
+                        case .failure(let msg):
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(.red)
+                                    Text("连接失败")
+                                        .font(.subheadline)
+                                        .foregroundColor(.red)
+                                }
+                                Text(msg)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        default:
+                            EmptyView()
                         }
-                    case .idle:
-                        EmptyView()
                     }
                 }
 
                 // MARK: - 操作
                 Section {
-                    Button(action: {
-                        viewModel.testConnection(apiUrl, model, apiKey)
-                    }) {
-                        Label("测试连接", systemImage: "network")
-                    }
-                    .disabled(apiUrl.isEmpty || apiKey.isEmpty)
+                    HStack(spacing: 16) {
+                        Button(action: {
+                            viewModel.testConnection(apiUrl, model, apiKey)
+                        }) {
+                            Label("测试连接", systemImage: "network")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .disabled(apiUrl.isEmpty || model.isEmpty || apiKey.isEmpty)
 
-                    Button(action: {
-                        viewModel.clearConfig()
-                        apiUrl = ""
-                        model = ""
-                        apiKey = ""
-                    }) {
-                        Label("清空配置", systemImage: "trash")
-                            .foregroundColor(.red)
+                        Button(action: {
+                            viewModel.clearConfig()
+                            apiUrl = ""
+                            model = ""
+                            apiKey = ""
+                        }) {
+                            Label("清空配置", systemImage: "trash")
+                                .foregroundColor(.red)
+                                .frame(maxWidth: .infinity)
+                        }
                     }
                 }
             }
+            .background(
+                // Dismiss keyboard on tap-outside without blocking child button taps
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                                        to: nil, from: nil, for: nil)
+                    }
+            )
             .navigationTitle("大模型配置")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -157,7 +171,7 @@ struct SettingsScreen: View {
                     Button("保存") {
                         viewModel.saveConfig(apiUrl, model, apiKey)
                     }
-                    .disabled(apiUrl.isEmpty || apiKey.isEmpty)
+                    .disabled(apiUrl.isEmpty || model.isEmpty || apiKey.isEmpty)
                 }
             }
             .onAppear {
