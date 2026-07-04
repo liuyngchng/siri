@@ -21,7 +21,7 @@ struct MainScreen: View {
                 // Chat messages
                 ScrollViewReader { scrollProxy in
                     ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 8) {
+                        LazyVStack(alignment: .leading, spacing: 12) {
                             // Status center when no messages
                             if viewModel.messages.isEmpty {
                                 StatusCenter(voiceState: viewModel.state.voiceState)
@@ -101,32 +101,43 @@ struct MainScreen: View {
                 )
                 .padding(.bottom, 32)
             }
-            .navigationTitle("Siri")
+            .background(Color(.systemBackground))
+            .navigationTitle("语音助手")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 20) {
                         // Clear history
                         if !viewModel.messages.isEmpty {
                             Button(action: { showClearDialog = true }) {
                                 Image(systemName: "trash")
-                                    .font(.title3)
+                                    .font(.body)
                             }
                         }
                         // Settings
                         Button(action: onNavigateToSettings) {
                             Image(systemName: "gearshape")
-                                .font(.title3)
+                                .font(.body)
                         }
                     }
                 }
             }
             .alert(isPresented: $showClearDialog) {
-                Alert(
-                    title: Text("清除历史"),
-                    message: Text("确定要清除所有对话记录吗？此操作不可撤销。"),
-                    primaryButton: .destructive(Text("确定"), action: { viewModel.clearHistory() }),
-                    secondaryButton: .cancel(Text("取消"))
-                )
+                // iOS 15+: use .destructive style; iOS 14: fall back to .default
+                if #available(iOS 15.0, *) {
+                    return Alert(
+                        title: Text("清除历史"),
+                        message: Text("确定要清除所有对话记录吗？此操作不可撤销。"),
+                        primaryButton: .destructive(Text("确定"), action: { viewModel.clearHistory() }),
+                        secondaryButton: .cancel(Text("取消"))
+                    )
+                } else {
+                    return Alert(
+                        title: Text("清除历史"),
+                        message: Text("确定要清除所有对话记录吗？此操作不可撤销。"),
+                        primaryButton: .default(Text("确定"), action: { viewModel.clearHistory() }),
+                        secondaryButton: .cancel(Text("取消"))
+                    )
+                }
             }
             .onAppear {
                 _ = viewModel.checkConfig()

@@ -3,22 +3,18 @@
 //  SiriApp
 //
 //  Card UI for a model file slot (ASR, TTS, Vocoder).
-//  Shows ready state, download button, upload button, progress.
+//  Shows ready state, download button, import button, progress.
 //  Ported from Android: ModelSetupScreen.kt (ModelSlotCard)
 //
 
 import SwiftUI
 
-struct SlotState {
-    var extracting: Bool = false
-    var progress: Float = 0
-    var error: String? = nil
-}
-
 struct ModelSlotCard: View {
     let label: String
     let isReady: Bool
-    let slot: SlotState
+    let isProcessing: Bool
+    let progress: Double
+    let error: String?
     let onSelect: () -> Void
     let onDownload: (() -> Void)?
 
@@ -30,22 +26,23 @@ struct ModelSlotCard: View {
                     .foregroundColor(isReady ? Color(red: 0.3, green: 0.69, blue: 0.31) : Color(red: 1.0, green: 0.6, blue: 0.0))
                     .font(.title3)
                 Text(label)
-                    .font(.headline)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
             }
             .padding(.bottom, 4)
 
-            if slot.extracting {
+            if isProcessing {
                 // Progress
-                Text("处理中 \(Int(slot.progress * 100))%")
+                Text("处理中 \(Int(progress * 100))%")
                     .font(.caption)
                     .foregroundColor(.blue)
                     .padding(.bottom, 4)
 
-                if slot.progress <= 0 {
+                if progress <= 0 {
                     ProgressView()
                         .progressViewStyle(LinearProgressViewStyle())
                 } else {
-                    ProgressView(value: Double(slot.progress))
+                    ProgressView(value: progress)
                         .progressViewStyle(LinearProgressViewStyle())
                 }
             } else if !isReady {
@@ -56,19 +53,19 @@ struct ModelSlotCard: View {
                             Text("下载")
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(BorderedProminentButtonStyle())
+                        .buttonStyle(.borderless)
                     }
                     Button(action: onSelect) {
                         Text("上传")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(BorderedButtonStyle())
+                    .buttonStyle(.borderless)
                 }
                 .padding(.top, 8)
             }
 
             // Error
-            if let error = slot.error {
+            if let error = error, !error.isEmpty {
                 Text(error)
                     .font(.caption)
                     .foregroundColor(.red)

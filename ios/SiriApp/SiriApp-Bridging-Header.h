@@ -10,3 +10,4 @@
 
 // libbz2 for tar.bz2 decompression (system library)
 #include <bzlib.h>
+#import "Helpers/Bzip2Helper.h"

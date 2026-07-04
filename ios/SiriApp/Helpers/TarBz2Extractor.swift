@@ -2,8 +2,9 @@
 //  TarBz2Extractor.swift
 //  SiriApp
 //
-//  tar.bz2 extraction using system libbz2 (via bridging header).
-//  Ported from Android: ModelManager.kt tar extraction logic.
+//  tar.bz2 extraction using stream-based bzip2 (via Bzip2Helper.h) and
+//  FileHandle-based tar parsing. Memory efficient — no full file loads.
+//  Ported from VoiceNote: ASRModelManager.swift tar extraction logic.
 //
 
 import Foundation
@@ -17,167 +18,171 @@ enum TarBz2Extractor {
         "vocos-22khz-univ.onnx": "vocos.onnx",
     ]
 
-    /// Extract tar.bz2 file to destination directory.
-    /// Strips the first path component (--strip-components=1).
+    // MARK: - Public API
+
+    /// Extract a .tar.bz2 or .tar file to destination directory.
+    /// Uses streaming I/O — safe for large files on iOS.
     static func extract(
         sourceURL: URL,
         destinationDir: URL,
         progress: ((Float) -> Void)? = nil
     ) throws {
-        let fileData = try Data(contentsOf: sourceURL)
+        let fm = FileManager.default
+        try fm.createDirectory(at: destinationDir, withIntermediateDirectories: true)
 
-        // Decompress bzip2
-        let decompressed = try decompressBz2(fileData, progress: { p in
-            progress?(p * 0.5)
-        })
+        let isTar = sourceURL.pathExtension.lowercased() == "tar"
 
-        // Extract tar
-        try extractTar(
-            data: decompressed,
-            to: destinationDir,
-            totalDecompressedSize: decompressed.count,
-            progress: { p in
-                progress?(0.5 + p * 0.5)
+        let tarURL: URL
+        if isTar {
+            tarURL = sourceURL
+            progress?(0.1)
+        } else {
+            // Decompress bzip2 → tar in temp directory
+            let tmpDir = fm.temporaryDirectory.appendingPathComponent("tar-extract-\(UUID().uuidString)")
+            try fm.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+            defer { try? fm.removeItem(at: tmpDir) }
+
+            let decompressedURL = tmpDir.appendingPathComponent(
+                sourceURL.deletingLastPathComponent().lastPathComponent
+            ).deletingPathExtension().appendingPathExtension("tar")
+
+            progress?(0.0)
+
+            let result = bzip2_decompress_file(sourceURL.path, decompressedURL.path)
+            guard result == 0 else {
+                throw NSError(
+                    domain: "TarBz2Extractor", code: Int(result),
+                    userInfo: [NSLocalizedDescriptionKey: "bzip2 decompress failed, code: \(result)"]
+                )
             }
-        )
+
+            progress?(0.3)
+            tarURL = decompressedURL
+
+            // Extract from tar
+            try extractTar(tarURL: tarURL, to: destinationDir, progress: { p in
+                progress?(0.3 + p * 0.6)
+            })
+        }
+
+        // Extract from tar if not already done (for .tar files)
+        if isTar {
+            try extractTar(tarURL: tarURL, to: destinationDir, progress: { p in
+                progress?(0.1 + p * 0.8)
+            })
+        }
 
         // Rename known files
-        let fm = FileManager.default
         for (oldName, newName) in renameMap {
             let src = destinationDir.appendingPathComponent(oldName)
             let dst = destinationDir.appendingPathComponent(newName)
             if fm.fileExists(atPath: src.path) && !fm.fileExists(atPath: dst.path) {
+                try? fm.removeItem(at: dst)
                 try? fm.moveItem(at: src, to: dst)
             }
         }
+
+        progress?(1.0)
     }
 
-    // MARK: - Bzip2 Decompression
-
-    private static func decompressBz2(
-        _ data: Data,
-        progress: ((Float) -> Void)? = nil
-    ) throws -> Data {
-        // Use libbz2 via bridging header (<bzlib.h>)
-        let totalSize = data.count
-        var result = Data()
-
-        try data.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) in
-            guard let baseAddress = ptr.baseAddress else {
-                throw NSError(domain: "TarBz2", code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: "Failed to read input data"])
-            }
-
-            var bzStream = bz_stream()
-            bzStream.next_in = UnsafeMutablePointer<Int8>(
-                mutating: baseAddress.assumingMemoryBound(to: Int8.self)
-            )
-            bzStream.avail_in = UInt32(totalSize)
-
-            guard BZ2_bzDecompressInit(&bzStream, 0, 0) == BZ_OK else {
-                throw NSError(domain: "TarBz2", code: -2,
-                    userInfo: [NSLocalizedDescriptionKey: "BZ2 decompress init failed"])
-            }
-            defer { BZ2_bzDecompressEnd(&bzStream) }
-
-            let outBufSize = 65536
-            var outBuf = [Int8](repeating: 0, count: outBufSize)
-
-            try outBuf.withUnsafeMutableBufferPointer { buffer in
-                bzStream.next_out = buffer.baseAddress
-                bzStream.avail_out = UInt32(outBufSize)
-
-                while true {
-                    let ret = BZ2_bzDecompress(&bzStream)
-                    let produced = outBufSize - Int(bzStream.avail_out)
-
-                    if produced > 0 {
-                        result.append(contentsOf: (0..<produced).map { UInt8(bitPattern: buffer[$0]) })
-                        progress?(Float(bzStream.total_in_lo32) / Float(totalSize))
-                    }
-
-                    if ret == BZ_STREAM_END { break }
-                    if ret != BZ_OK {
-                        throw NSError(domain: "TarBz2", code: Int(ret),
-                            userInfo: [NSLocalizedDescriptionKey: "BZ2 decompress error: \(ret)"])
-                    }
-
-                    // Reset output buffer for next iteration
-                    bzStream.next_out = buffer.baseAddress
-                    bzStream.avail_out = UInt32(outBufSize)
-                }
-            }
-        }
-
-        return result
-    }
-
-    // MARK: - Tar Extraction
+    // MARK: - Tar Extraction (streaming)
 
     private static func extractTar(
-        data: Data,
+        tarURL: URL,
         to destDir: URL,
-        totalDecompressedSize: Int,
         progress: ((Float) -> Void)? = nil
     ) throws {
         let fm = FileManager.default
-        try fm.createDirectory(at: destDir, withIntermediateDirectories: true)
 
-        var offset = 0
+        // Get total file size for progress
+        let totalSize: Float
+        if let attrs = try? fm.attributesOfItem(atPath: tarURL.path),
+           let size = attrs[.size] as? NSNumber {
+            totalSize = Float(size.int64Value)
+        } else {
+            totalSize = 1
+        }
 
-        while offset + tarBlockSize <= data.count {
-            let header = data.subdata(in: offset..<offset + tarBlockSize)
-            offset += tarBlockSize
+        let fileHandle = try FileHandle(forReadingFrom: tarURL)
+        defer { try? fileHandle.close() }
 
-            // Read file name (bytes 0-99)
-            guard let name = String(data: header[0..<100], encoding: .ascii)?
-                .trimmingCharacters(in: CharacterSet(charactersIn: "\0")) else {
+        while true {
+            // Read 512-byte tar header
+            guard let headerData = try? fileHandle.read(upToCount: tarBlockSize),
+                  headerData.count == tarBlockSize else {
                 break
             }
 
-            // Empty name = end of archive
-            guard !name.isEmpty else { break }
+            // Check for end-of-archive (two consecutive zero blocks)
+            if headerData.allSatisfy({ $0 == 0 }) {
+                if let nextBlock = try? fileHandle.read(upToCount: tarBlockSize),
+                   nextBlock.allSatisfy({ $0 == 0 }) {
+                    break
+                }
+                // Not actually end — rewind
+                try? fileHandle.seek(toOffset: fileHandle.offsetInFile - UInt64(tarBlockSize))
+                break
+            }
 
-            // Read file size (bytes 124-135, octal string)
-            guard let sizeStr = String(data: header[124..<136], encoding: .ascii)?
+            // Parse file name (offset 0, length 100)
+            let nameData = headerData[0..<100]
+            guard let name = String(data: nameData, encoding: .utf8)?
+                .trimmingCharacters(in: CharacterSet(charactersIn: "\0"))
+                .trimmingCharacters(in: CharacterSet(charactersIn: "/")) else {
+                continue
+            }
+
+            // Parse file size (offset 124, length 12, octal string)
+            let sizeData = headerData[124..<136]
+            guard let sizeStr = String(data: sizeData, encoding: .utf8)?
                 .trimmingCharacters(in: CharacterSet(charactersIn: "\0 ")),
-                  let size = Int(sizeStr, radix: 8) else {
-                break
+                  let fileSize = UInt64(sizeStr, radix: 8) else {
+                continue
             }
 
-            // Strip first directory component
+            // Strip first directory component (--strip-components=1)
             var relativePath = name
             if let slashRange = relativePath.range(of: "/") {
                 relativePath = String(relativePath[slashRange.upperBound...])
             }
-            guard !relativePath.isEmpty else {
-                // Skip to next block boundary
-                if size > 0 {
-                    offset += ((size + tarBlockSize - 1) / tarBlockSize) * tarBlockSize
+
+            // Calculate padded size (512-byte aligned)
+            let paddedSize = ((fileSize + UInt64(tarBlockSize) - 1) / UInt64(tarBlockSize)) * UInt64(tarBlockSize)
+
+            if relativePath.isEmpty || name.hasSuffix("/") || fileSize == 0 {
+                // Directory entry — skip padding
+                if paddedSize > 0 {
+                    try? fileHandle.seek(toOffset: fileHandle.offsetInFile + paddedSize)
                 }
+                progress?(Float(fileHandle.offsetInFile) / totalSize)
                 continue
             }
 
+            // Extract file
             let destPath = destDir.appendingPathComponent(relativePath)
+            try fm.createDirectory(at: destPath.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try? fm.removeItem(at: destPath)
 
-            if name.hasSuffix("/") || size == 0 {
-                // Directory
-                try fm.createDirectory(at: destPath, withIntermediateDirectories: true)
-            } else {
-                // File
-                try fm.createDirectory(
-                    at: destPath.deletingLastPathComponent(),
-                    withIntermediateDirectories: true
-                )
-                let fileData = data.subdata(in: offset..<offset + size)
+            if fileSize > 0 {
+                guard let fileData = try? fileHandle.read(upToCount: Int(fileSize)) else {
+                    throw NSError(
+                        domain: "TarBz2Extractor", code: -4,
+                        userInfo: [NSLocalizedDescriptionKey: "Failed to read tar entry: \(relativePath)"]
+                    )
+                }
                 try fileData.write(to: destPath)
-
-                // Pad to 512-byte boundary
-                let paddedSize = ((size + tarBlockSize - 1) / tarBlockSize) * tarBlockSize
-                offset += paddedSize
+            } else {
+                // Empty file
+                fm.createFile(atPath: destPath.path, contents: nil)
             }
 
-            progress?(Float(offset) / Float(totalDecompressedSize))
+            // Skip padding bytes (already read fileSize bytes, need to skip paddedSize - fileSize)
+            let padding = Int(paddedSize - fileSize)
+            if padding > 0 {
+                try? fileHandle.seek(toOffset: fileHandle.offsetInFile + UInt64(padding))
+            }
+
+            progress?(Float(fileHandle.offsetInFile) / totalSize)
         }
     }
 }

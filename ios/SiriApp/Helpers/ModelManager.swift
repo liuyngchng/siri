@@ -2,16 +2,63 @@
 //  ModelManager.swift
 //  SiriApp
 //
-//  Model file management: check, download, extract.
-//  Ported from Android: ModelManager.kt
+//  Model file management: check, download, import, extract.
+//  Per-slot state + serial operation queue — user can submit all 3 at once.
 //
 
 import Foundation
-import Combine
+import OSLog
 
-enum ModelManager {
-    static let asrModelDir = "models/asr"
-    static let ttsModelDir = "models/tts"
+private let modelLog = Logger(subsystem: "com.siri.app", category: "ModelManager")
+
+// MARK: - Download State
+
+enum ModelDownloadState: Equatable {
+    case idle
+    case queued                     // waiting in queue
+    case downloading(progress: Double)
+    case importing(progress: Double) // reading file from local/remote source (not HTTP download)
+    case extracting(progress: Double)
+    case completed(Date)
+    case failed(String)
+}
+
+// MARK: - Operation Queue (serializes all model operations)
+
+private actor OperationQueue {
+    private var lastTask: Task<Void, Never>?
+
+    func enqueue(_ operation: @escaping () async -> Void) {
+        let prev = lastTask
+        lastTask = Task {
+            await prev?.value
+            guard !Task.isCancelled else { return }
+            await operation()
+        }
+    }
+
+    func cancelAll() {
+        lastTask?.cancel()
+        lastTask = nil
+    }
+}
+
+// MARK: - Model Manager
+
+@MainActor
+final class ModelManager: ObservableObject {
+    @Published var asrState: ModelDownloadState = .idle
+    @Published var ttsState: ModelDownloadState = .idle
+    @Published var vocoderState: ModelDownloadState = .idle
+
+    private let queue = OperationQueue()
+    private var currentDownloadTask: URLSessionDownloadTask?
+    private var currentDownloadSession: URLSession?
+
+    // MARK: - Paths
+
+    static let asrModelDir = "asr"
+    static let ttsModelDir = "tts"
 
     private static let asrRequired = ["model.int8.onnx", "tokens.txt"]
     private static let ttsRequired = ["model.onnx", "vocos.onnx", "tokens.txt", "lexicon.txt"]
@@ -26,299 +73,495 @@ enum ModelManager {
         string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-22khz-univ.onnx"
     )!
 
-    // MARK: - Paths
+    deinit {
+        currentDownloadSession?.invalidateAndCancel()
+    }
 
-    static func documentsDir() -> URL {
+    // MARK: - Path Helpers
+
+    nonisolated static func documentsDir() -> URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
-
-    static func modelsDir() -> URL {
+    nonisolated static func modelsDir() -> URL {
         documentsDir().appendingPathComponent("models")
     }
-
-    static func asrModelDirURL() -> URL {
+    nonisolated static func asrModelDirURL() -> URL {
         modelsDir().appendingPathComponent(asrModelDir)
     }
-
-    static func ttsModelDirURL() -> URL {
+    nonisolated static func ttsModelDirURL() -> URL {
         modelsDir().appendingPathComponent(ttsModelDir)
     }
 
     // MARK: - Ready Checks
 
-    static func checkAllReady() -> Bool {
-        checkAsrReady() && checkTtsReady()
-    }
+    nonisolated static func checkAllReady() -> Bool { checkAsrReady() && checkTtsReady() }
 
-    static func checkAsrReady() -> Bool {
+    nonisolated static func checkAsrReady() -> Bool {
         let dir = asrModelDirURL()
-        return asrRequired.allSatisfy {
-            FileManager.default.fileExists(atPath: dir.appendingPathComponent($0).path)
-        }
+        return asrRequired.allSatisfy { FileManager.default.fileExists(atPath: dir.appendingPathComponent($0).path) }
     }
-
-    static func checkTtsReady() -> Bool {
+    nonisolated static func checkTtsReady() -> Bool {
         let dir = ttsModelDirURL()
-        return ttsRequired.allSatisfy {
-            FileManager.default.fileExists(atPath: dir.appendingPathComponent($0).path)
-        }
+        return ttsRequired.allSatisfy { FileManager.default.fileExists(atPath: dir.appendingPathComponent($0).path) }
     }
-
-    /// Check if TTS tar has been extracted (at least tokens + lexicon exist)
-    static func checkTtsExtracted() -> Bool {
+    nonisolated static func checkTtsExtracted() -> Bool {
         let dir = ttsModelDirURL()
-        return ["tokens.txt", "lexicon.txt"].allSatisfy {
-            FileManager.default.fileExists(atPath: dir.appendingPathComponent($0).path)
+        return ["tokens.txt", "lexicon.txt"].allSatisfy { FileManager.default.fileExists(atPath: dir.appendingPathComponent($0).path) }
+    }
+    nonisolated static func checkVocoderReady() -> Bool {
+        let path = ttsModelDirURL().appendingPathComponent("vocos.onnx").path
+        let exists = FileManager.default.fileExists(atPath: path)
+        modelLog.info("checkVocoderReady: path=\(path), exists=\(exists)")
+        return exists
+    }
+
+    // MARK: - Cancel
+
+    func cancelAll() {
+        currentDownloadTask?.cancel()
+        currentDownloadTask = nil
+        currentDownloadSession?.invalidateAndCancel()
+        currentDownloadSession = nil
+        Task { await queue.cancelAll() }
+        // Reset queued/processing states
+        if case .queued = asrState { asrState = .idle }
+        if case .queued = ttsState { ttsState = .idle }
+        if case .queued = vocoderState { vocoderState = .idle }
+    }
+
+    // MARK: - Download (enqueue, returns immediately)
+
+    func downloadAsrModel() {
+        guard asrState != .completed(Date()) else { return }
+        modelLog.info("downloadAsrModel enqueued")
+        asrState = .queued
+        Task {
+            await queue.enqueue { [weak self] in
+                await self?._downloadAsrModel()
+            }
         }
     }
 
-    static func checkVocoderReady() -> Bool {
-        FileManager.default.fileExists(
-            atPath: ttsModelDirURL().appendingPathComponent("vocos.onnx").path
+    func downloadTtsModel() {
+        guard ttsState != .completed(Date()) else { return }
+        modelLog.info("downloadTtsModel enqueued")
+        ttsState = .queued
+        Task {
+            await queue.enqueue { [weak self] in
+                await self?._downloadTtsModel()
+            }
+        }
+    }
+
+    func downloadVocoder() {
+        guard vocoderState != .completed(Date()) else { return }
+        modelLog.info("downloadVocoder enqueued")
+        vocoderState = .queued
+        Task {
+            await queue.enqueue { [weak self] in
+                await self?._downloadVocoder()
+            }
+        }
+    }
+
+    // MARK: - Import (enqueue, returns immediately)
+
+    func importAsrModel(from sourceURL: URL, cleanup: (() -> Void)? = nil) {
+        modelLog.info("importAsrModel enqueued: \(sourceURL.lastPathComponent)")
+        asrState = .queued
+        Task {
+            await queue.enqueue { [weak self] in
+                await self?._importAsrModel(from: sourceURL, cleanup: cleanup)
+            }
+        }
+    }
+
+    func importTtsModel(from sourceURL: URL, cleanup: (() -> Void)? = nil) {
+        modelLog.info("importTtsModel enqueued: \(sourceURL.lastPathComponent)")
+        ttsState = .queued
+        Task {
+            await queue.enqueue { [weak self] in
+                await self?._importTtsModel(from: sourceURL, cleanup: cleanup)
+            }
+        }
+    }
+
+    func importVocoder(from sourceURL: URL, cleanup: (() -> Void)? = nil) {
+        modelLog.info("importVocoder enqueued: \(sourceURL.lastPathComponent)")
+        vocoderState = .queued
+        Task {
+            await queue.enqueue { [weak self] in
+                await self?._importVocoder(from: sourceURL, cleanup: cleanup)
+            }
+        }
+    }
+
+    // MARK: - Private: Actual Download Logic (runs sequentially)
+
+    private func _downloadAsrModel() async {
+        await _downloadAndExtract(
+            url: Self.asrDownloadURL,
+            destDir: Self.asrModelDir,
+            archiveName: "asr_model.tar.bz2",
+            statePath: \.asrState,
+            checkReady: { Self.checkAsrReady() }
         )
     }
 
-    // MARK: - File Import (from document picker)
-
-    /// Extract tar from a local file URL (from document picker)
-    static func extractTarFile(
-        sourceURL: URL,
-        destSubDir: String,
-        progress: @escaping (Float) -> Void
-    ) -> AnyPublisher<Void, Error> {
-        Future { promise in
-            DispatchQueue.global(qos: .userInitiated).async {
-                do {
-                    let destDir = modelsDir().appendingPathComponent(destSubDir)
-                    try TarBz2Extractor.extract(
-                        sourceURL: sourceURL,
-                        destinationDir: destDir,
-                        progress: progress
-                    )
-                    promise(.success(()))
-                } catch {
-                    promise(.failure(error))
-                }
-            }
-        }.eraseToAnyPublisher()
+    private func _downloadTtsModel() async {
+        await _downloadAndExtract(
+            url: Self.ttsDownloadURL,
+            destDir: Self.ttsModelDir,
+            archiveName: "tts_model.tar.bz2",
+            statePath: \.ttsState,
+            checkReady: { Self.checkTtsExtracted() }
+        )
     }
 
-    /// Copy vocoder file to TTS model directory
-    static func copyVocoderFile(
-        sourceURL: URL,
-        progress: @escaping (Float) -> Void
-    ) -> AnyPublisher<Void, Error> {
-        Future { promise in
-            DispatchQueue.global(qos: .userInitiated).async {
-                do {
-                    let destDir = ttsModelDirURL()
-                    try FileManager.default.createDirectory(
-                        at: destDir,
-                        withIntermediateDirectories: true
-                    )
-                    let destFile = destDir.appendingPathComponent("vocos.onnx")
+    private func _downloadVocoder() async {
+        modelLog.info("Starting vocoder download")
+        vocoderState = .downloading(progress: 0)
 
-                    let fileData = try Data(contentsOf: sourceURL)
-                    let totalSize = fileData.count
+        let destDir = Self.ttsModelDirURL()
+        try? FileManager.default.createDirectory(at: destDir, withIntermediateDirectories: true)
+        let destFile = destDir.appendingPathComponent("vocos.onnx")
 
-                    // Copy in chunks for progress reporting
-                    let chunkSize = 65536
-                    try FileManager.default.removeItemIfExists(at: destFile)
-                    FileManager.default.createFile(atPath: destFile.path, contents: nil)
-                    let fh = try FileHandle(forWritingTo: destFile)
-                    defer { try? fh.close() }
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("vocoder-download-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
 
-                    for offset in stride(from: 0, to: fileData.count, by: chunkSize) {
-                        let end = min(offset + chunkSize, fileData.count)
-                        let chunk = fileData[offset..<end]
-                        try fh.write(contentsOf: chunk)
-                        progress(Float(end) / Float(totalSize))
-                    }
+        let tempFile = tempDir.appendingPathComponent("vocos-22khz-univ.onnx")
 
-                    try fh.close()
-                    progress(1.0)
-                    promise(.success(()))
-                } catch {
-                    promise(.failure(error))
-                }
+        do {
+            try await _downloadFile(from: Self.vocoderDownloadURL, to: tempFile) { [weak self] p in
+                self?.vocoderState = .downloading(progress: p)
             }
-        }.eraseToAnyPublisher()
-    }
-
-    // MARK: - Download from GitHub Releases
-
-    static func downloadAndExtractAsr(
-        progress: @escaping (Float) -> Void
-    ) -> AnyPublisher<Void, Error> {
-        Future { promise in
-            DispatchQueue.global(qos: .userInitiated).async {
-                do {
-                    let tmpFile = URL(fileURLWithPath: NSTemporaryDirectory())
-                        .appendingPathComponent("asr_model.tar.bz2")
-                    try? FileManager.default.removeItemIfExists(at: tmpFile)
-
-                    // Download
-                    try downloadFile(from: asrDownloadURL, to: tmpFile) { p in
-                        progress(p * 0.5)
-                    }
-
-                    // Extract
-                    let destDir = asrModelDirURL()
-                    try TarBz2Extractor.extract(
-                        sourceURL: tmpFile,
-                        destinationDir: destDir,
-                        progress: { p in
-                            progress(0.5 + p * 0.5)
-                        }
-                    )
-
-                    try? FileManager.default.removeItemIfExists(at: tmpFile)
-                    promise(.success(()))
-                } catch {
-                    promise(.failure(error))
-                }
+        } catch {
+            if error is CancellationError {
+                modelLog.info("Vocoder download cancelled")
+                vocoderState = .idle; return
             }
-        }.eraseToAnyPublisher()
-    }
-
-    static func downloadAndExtractTts(
-        progress: @escaping (Float) -> Void
-    ) -> AnyPublisher<Void, Error> {
-        Future { promise in
-            DispatchQueue.global(qos: .userInitiated).async {
-                do {
-                    let tmpFile = URL(fileURLWithPath: NSTemporaryDirectory())
-                        .appendingPathComponent("tts_model.tar.bz2")
-                    try? FileManager.default.removeItemIfExists(at: tmpFile)
-
-                    // Download
-                    try downloadFile(from: ttsDownloadURL, to: tmpFile) { p in
-                        progress(p * 0.5)
-                    }
-
-                    // Extract
-                    let destDir = ttsModelDirURL()
-                    try TarBz2Extractor.extract(
-                        sourceURL: tmpFile,
-                        destinationDir: destDir,
-                        progress: { p in
-                            progress(0.5 + p * 0.5)
-                        }
-                    )
-
-                    try? FileManager.default.removeItemIfExists(at: tmpFile)
-                    promise(.success(()))
-                } catch {
-                    promise(.failure(error))
-                }
-            }
-        }.eraseToAnyPublisher()
-    }
-
-    static func downloadVocoder(
-        progress: @escaping (Float) -> Void
-    ) -> AnyPublisher<Void, Error> {
-        Future { promise in
-            DispatchQueue.global(qos: .userInitiated).async {
-                do {
-                    let tmpFile = URL(fileURLWithPath: NSTemporaryDirectory())
-                        .appendingPathComponent("vocos-22khz-univ.onnx")
-                    try? FileManager.default.removeItemIfExists(at: tmpFile)
-
-                    // Download
-                    try downloadFile(from: vocoderDownloadURL, to: tmpFile) { p in
-                        progress(p * 0.9)
-                    }
-
-                    // Copy to TTS dir
-                    let destDir = ttsModelDirURL()
-                    try FileManager.default.createDirectory(
-                        at: destDir, withIntermediateDirectories: true
-                    )
-                    let destFile = destDir.appendingPathComponent("vocos.onnx")
-                    try? FileManager.default.removeItemIfExists(at: destFile)
-                    try FileManager.default.copyItem(at: tmpFile, to: destFile)
-                    try? FileManager.default.removeItemIfExists(at: tmpFile)
-
-                    progress(1.0)
-                    promise(.success(()))
-                } catch {
-                    promise(.failure(error))
-                }
-            }
-        }.eraseToAnyPublisher()
-    }
-
-    // MARK: - Private Download
-
-    private static func downloadFile(
-        from url: URL,
-        to dest: URL,
-        progress: @escaping (Float) -> Void
-    ) throws {
-        let semaphore = DispatchSemaphore(value: 0)
-        var downloadError: Error?
-
-        let session = URLSession(configuration: .default)
-
-        let task = session.dataTask(with: url) { data, response, error in
-            defer { semaphore.signal() }
-
-            if let error = error {
-                downloadError = error
-                return
-            }
-
-            guard let httpResponse = response as? HTTPURLResponse,
-                  (200...299).contains(httpResponse.statusCode),
-                  let data = data else {
-                downloadError = NSError(
-                    domain: "ModelManager",
-                    code: (response as? HTTPURLResponse)?.statusCode ?? 0,
-                    userInfo: [NSLocalizedDescriptionKey: "下载失败"]
-                )
-                return
-            }
-
-            do {
-                try FileManager.default.createDirectory(
-                    at: dest.deletingLastPathComponent(),
-                    withIntermediateDirectories: true
-                )
-                let totalSize = data.count
-                let chunkSize = 65536
-                try? FileManager.default.removeItem(at: dest)
-                FileManager.default.createFile(atPath: dest.path, contents: nil)
-                let fh = try FileHandle(forWritingTo: dest)
-                defer { try? fh.close() }
-
-                for offset in stride(from: 0, to: totalSize, by: chunkSize) {
-                    let end = min(offset + chunkSize, totalSize)
-                    let chunk = data[offset..<end]
-                    try fh.write(contentsOf: chunk)
-                    progress(Float(end) / Float(totalSize))
-                }
-                try fh.close()
-            } catch {
-                downloadError = error
-            }
+            modelLog.error("Vocoder download failed: \(error.localizedDescription)")
+            vocoderState = .failed("下载失败: \(error.localizedDescription)")
+            return
         }
 
-        task.resume()
-        semaphore.wait()
+        try? FileManager.default.removeItem(at: destFile)
+        try? FileManager.default.copyItem(at: tempFile, to: destFile)
+        modelLog.info("Vocoder download completed")
+        vocoderState = .completed(Date())
+    }
 
-        if let error = downloadError {
-            throw error
+    // MARK: - Private: Actual Import Logic (runs sequentially)
+
+    private func _importAsrModel(from sourceURL: URL, cleanup: (() -> Void)?) async {
+        await _importArchive(from: sourceURL, destDir: Self.asrModelDir, statePath: \.asrState, cleanup: cleanup)
+    }
+
+    private func _importTtsModel(from sourceURL: URL, cleanup: (() -> Void)?) async {
+        await _importArchive(from: sourceURL, destDir: Self.ttsModelDir, statePath: \.ttsState, cleanup: cleanup)
+    }
+
+    private func _importVocoder(from sourceURL: URL, cleanup: (() -> Void)?) async {
+        modelLog.info("Starting vocoder import from \(sourceURL.lastPathComponent)")
+        vocoderState = .importing(progress: 0)
+
+        let destDir = Self.ttsModelDirURL()
+        try? FileManager.default.createDirectory(at: destDir, withIntermediateDirectories: true)
+        let destFile = destDir.appendingPathComponent("vocos.onnx")
+
+        do {
+            try await Task.detached(priority: .userInitiated) {
+                let fm = FileManager.default
+                try? fm.removeItem(at: destFile)
+                let data: Data
+                do { data = try Data(contentsOf: sourceURL, options: []) }
+                catch {
+                    modelLog.warning("Data(contentsOf:) failed, falling back to FileHandle: \(error.localizedDescription)")
+                    let handle = try FileHandle(forReadingFrom: sourceURL)
+                    defer { try? handle.close() }
+                    data = handle.readDataToEndOfFile()
+                }
+                modelLog.debug("Read \(data.count) bytes, writing to dest")
+                try data.write(to: destFile)
+                modelLog.info("Vocoder file written to \(destFile.lastPathComponent)")
+            }.value
+        } catch {
+            modelLog.error("Vocoder import failed: \(error.localizedDescription)")
+            vocoderState = .failed("文件复制失败: \(error.localizedDescription)")
+            cleanup?()
+            return
+        }
+
+        modelLog.info("Vocoder import completed")
+        cleanup?()
+        vocoderState = .completed(Date())
+    }
+
+    // MARK: - Private: Download + Extract Pipeline
+
+    private func _downloadAndExtract(
+        url: URL?,
+        destDir: String,
+        archiveName: String,
+        statePath: ReferenceWritableKeyPath<ModelManager, ModelDownloadState>,
+        checkReady: @escaping () -> Bool
+    ) async {
+        self[keyPath: statePath] = .downloading(progress: 0)
+
+        guard let downloadURL = url else {
+            modelLog.error("Invalid download URL for \(archiveName)")
+            self[keyPath: statePath] = .failed("无效的下载地址")
+            return
+        }
+
+        modelLog.info("Downloading \(archiveName) from \(downloadURL.absoluteString)")
+
+        let fm = FileManager.default
+        let modelsDir = Self.modelsDir()
+        try? fm.createDirectory(at: modelsDir, withIntermediateDirectories: true)
+
+        let tempDir = fm.temporaryDirectory.appendingPathComponent("model-download-\(UUID().uuidString)")
+        try? fm.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempDir) }
+
+        let archiveURL = tempDir.appendingPathComponent(archiveName)
+
+        // Download
+        do {
+            try await _downloadFile(from: downloadURL, to: archiveURL) { [weak self] p in
+                self?[keyPath: statePath] = .downloading(progress: p)
+            }
+        } catch {
+            if error is CancellationError {
+                modelLog.info("Download cancelled for \(archiveName)")
+                self[keyPath: statePath] = .idle; return
+            }
+            modelLog.error("Download failed for \(archiveName): \(error.localizedDescription)")
+            self[keyPath: statePath] = .failed("下载失败: \(error.localizedDescription)")
+            return
+        }
+
+        modelLog.info("Download complete, extracting \(archiveName)")
+
+        // Extract on background thread to keep UI responsive
+        self[keyPath: statePath] = .extracting(progress: 0)
+        let destinationDir = modelsDir.appendingPathComponent(destDir)
+        do {
+            try await Task.detached(priority: .userInitiated) {
+                var lastReported: Float = -1
+                try TarBz2Extractor.extract(
+                    sourceURL: archiveURL,
+                    destinationDir: destinationDir,
+                    progress: { p in
+                        // Throttle: only update when changed by ≥2% or reached end
+                        guard p - lastReported >= 0.02 || p >= 1.0 else { return }
+                        lastReported = p
+                        Task { @MainActor [weak self] in
+                            self?[keyPath: statePath] = .extracting(progress: Double(p))
+                        }
+                    }
+                )
+            }.value
+        } catch {
+            modelLog.error("Extraction failed for \(archiveName): \(error.localizedDescription)")
+            self[keyPath: statePath] = .failed("解压失败: \(error.localizedDescription)")
+            return
+        }
+
+        guard checkReady() else {
+            modelLog.error("Verification failed for \(archiveName)")
+            self[keyPath: statePath] = .failed("完成但验证失败，文件缺失")
+            return
+        }
+
+        modelLog.info("Download + extract completed: \(archiveName)")
+        self[keyPath: statePath] = .completed(Date())
+    }
+
+    private func _importArchive(
+        from sourceURL: URL,
+        destDir: String,
+        statePath: ReferenceWritableKeyPath<ModelManager, ModelDownloadState>,
+        cleanup: (() -> Void)?
+    ) async {
+        self[keyPath: statePath] = .importing(progress: 0)
+
+        let fm = FileManager.default
+        let modelsDir = Self.modelsDir()
+        try? fm.createDirectory(at: modelsDir, withIntermediateDirectories: true)
+        let destinationDir = modelsDir.appendingPathComponent(destDir)
+
+        let srcExt = sourceURL.pathExtension.lowercased()
+        let isTar = (srcExt == "tar")
+
+        let tempDir = fm.temporaryDirectory.appendingPathComponent("model-import-\(UUID().uuidString)")
+        try? fm.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempDir) }
+
+        let archiveName = isTar ? "uploaded.tar" : "uploaded.tar.bz2"
+        let archiveURL = tempDir.appendingPathComponent(archiveName)
+
+        modelLog.info("Import archive from \(sourceURL.lastPathComponent) (isTar=\(isTar))")
+
+        // Copy file to temp
+        do {
+            try await Task.detached(priority: .userInitiated) {
+                let fm = FileManager.default
+                try? fm.removeItem(at: archiveURL)
+                let data: Data
+                do { data = try Data(contentsOf: sourceURL, options: []) }
+                catch {
+                    modelLog.warning("Data(contentsOf:) failed, falling back to FileHandle: \(error.localizedDescription)")
+                    let handle = try FileHandle(forReadingFrom: sourceURL)
+                    defer { try? handle.close() }
+                    data = handle.readDataToEndOfFile()
+                }
+                modelLog.debug("Read \(data.count) bytes (\(data.count / 1024 / 1024) MB) from source")
+                try data.write(to: archiveURL)
+                modelLog.info("Copied to temp: \(archiveURL.lastPathComponent)")
+            }.value
+        } catch {
+            modelLog.error("File read failed: \(error.localizedDescription)")
+            self[keyPath: statePath] = .failed("文件读取失败: \(error.localizedDescription)")
+            cleanup?()
+            return
+        }
+
+        // File data is now in local temp — safe to release security-scoped URL
+        cleanup?()
+
+        // Extract on background thread to keep UI responsive
+        self[keyPath: statePath] = .extracting(progress: 0)
+        modelLog.info("Starting extraction to \(destinationDir.path)")
+        do {
+            try await Task.detached(priority: .userInitiated) {
+                var lastReported: Float = -1
+                try TarBz2Extractor.extract(
+                    sourceURL: archiveURL,
+                    destinationDir: destinationDir,
+                    progress: { p in
+                        // Throttle: only update when changed by ≥2% or reached end
+                        guard p - lastReported >= 0.02 || p >= 1.0 else { return }
+                        lastReported = p
+                        Task { @MainActor [weak self] in
+                            self?[keyPath: statePath] = .extracting(progress: Double(p))
+                        }
+                    }
+                )
+            }.value
+        } catch {
+            modelLog.error("Extraction failed: \(error.localizedDescription)")
+            self[keyPath: statePath] = .failed("解压失败: \(error.localizedDescription)")
+            return
+        }
+
+        modelLog.info("Import completed successfully")
+        self[keyPath: statePath] = .completed(Date())
+    }
+
+    // MARK: - Private: File Download
+
+    private func _downloadFile(
+        from url: URL,
+        to targetURL: URL,
+        onProgress: @escaping (Double) -> Void
+    ) async throws {
+        return try await withCheckedThrowingContinuation { [weak self] continuation in
+            let delegate = DownloadProgressDelegate(onProgress: onProgress)
+            let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+            self?.currentDownloadSession = session
+
+            delegate.onCompletion = { [weak self] result in
+                Task { @MainActor [weak self] in
+                    switch result {
+                    case .success(let tempURL):
+                        do {
+                            try? FileManager.default.removeItem(at: targetURL)
+                            try FileManager.default.copyItem(at: tempURL, to: targetURL)
+                            continuation.resume()
+                        } catch {
+                            continuation.resume(throwing: error)
+                        }
+                        try? FileManager.default.removeItem(at: tempURL)
+                        self?.currentDownloadSession?.finishTasksAndInvalidate()
+                        self?.currentDownloadSession = nil
+                    case .failure(let error):
+                        self?.currentDownloadSession?.invalidateAndCancel()
+                        self?.currentDownloadSession = nil
+                        let nsError = error as NSError
+                        if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled {
+                            continuation.resume(throwing: CancellationError())
+                        } else {
+                            continuation.resume(throwing: error)
+                        }
+                    }
+                }
+            }
+
+            let task = session.downloadTask(with: url)
+            self?.currentDownloadTask = task
+            task.resume()
         }
     }
 }
 
-// MARK: - FileManager Helper
+// MARK: - Download Errors
 
-extension FileManager {
-    func removeItemIfExists(at url: URL) throws {
-        if fileExists(atPath: url.path) {
-            try removeItem(at: url)
+enum DownloadError: LocalizedError {
+    case invalidURL
+    case extractionFailed(String)
+    case verificationFailed
+    case fileImportFailed(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL: return "无效的下载地址"
+        case .extractionFailed(let msg): return "解压错误: \(msg)"
+        case .verificationFailed: return "下载完成但文件验证失败，请重试"
+        case .fileImportFailed(let msg): return "文件导入失败: \(msg)"
+        }
+    }
+}
+
+// MARK: - URLSessionDownloadDelegate
+
+private final class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate {
+    let onProgress: (Double) -> Void
+    var onCompletion: ((Result<URL, Error>) -> Void)?
+
+    init(onProgress: @escaping (Double) -> Void) {
+        self.onProgress = onProgress
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+                    didWriteData bytesWritten: Int64, totalBytesWritten: Int64,
+                    totalBytesExpectedToWrite: Int64) {
+        guard totalBytesExpectedToWrite > 0 else { return }
+        let progress = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
+        DispatchQueue.main.async { [weak self] in self?.onProgress(progress) }
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+                    didFinishDownloadingTo location: URL) {
+        let fm = FileManager.default
+        let cacheDir = fm.temporaryDirectory.appendingPathComponent("download-cache")
+        try? fm.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+        let cachedURL = cacheDir.appendingPathComponent(location.lastPathComponent)
+        try? fm.removeItem(at: cachedURL)
+        do {
+            try fm.copyItem(at: location, to: cachedURL)
+            onCompletion?(.success(cachedURL))
+        } catch {
+            onCompletion?(.failure(error))
+        }
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        if let error {
+            let nsError = error as NSError
+            if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled { return }
+            onCompletion?(.failure(error))
         }
     }
 }

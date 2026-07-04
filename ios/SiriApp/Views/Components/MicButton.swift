@@ -51,7 +51,10 @@ struct MicButton: View {
                 .frame(width: 108, height: 108)
                 .background(backgroundColor)
                 .clipShape(Circle())
-                .gesture(
+                // DragGesture(minimumDistance: 0) detects touch-down immediately,
+                // unlike LongPressGesture which has inherent delay. This is the
+                // standard SwiftUI pattern for press-and-hold-to-talk buttons.
+                .simultaneousGesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { _ in
                             guard enabled, !isSpeaking else { return }
@@ -59,8 +62,10 @@ struct MicButton: View {
                                 isPressing = true
                                 pressStartTime = Date()
                                 if case .idle = voiceState {
-                                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                                    // Prepare haptic early for responsive feel
+                                    let generator = UIImpactFeedbackGenerator(style: .light)
                                     generator.prepare()
+                                    generator.impactOccurred()
                                     onPressStart()
                                 }
                             }
@@ -83,6 +88,7 @@ struct MicButton: View {
                             pressStartTime = nil
                         }
                 )
+                // Tap to stop speaking (only when speaking)
                 .onTapGesture {
                     if isSpeaking {
                         onStopSpeaking()

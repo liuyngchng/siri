@@ -122,13 +122,18 @@ class MainViewModel: ObservableObject {
 
             let text = await MainActor.run { self.asrEngine.inputFinished() }
 
-            await MainActor.run {
-                if text.isEmpty {
+            // Early return if ASR produced no text — must be at Task level,
+            // NOT inside MainActor.run, or it only exits the inner closure.
+            if text.isEmpty {
+                await MainActor.run {
                     os_log(.info, "MainVM: ASR returned blank, returning to idle")
                     self.state.voiceState = .idle
                     self.state.partialAsrText = ""
-                    return
                 }
+                return
+            }
+
+            await MainActor.run {
                 self.state.finalAsrText = text
                 self.state.partialAsrText = ""
                 self.state.voiceState = .thinking
