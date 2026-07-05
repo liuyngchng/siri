@@ -56,7 +56,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var streamingJob: Job? = null
     private var speakingJob: Job? = null
     private var autoStopJob: Job? = null
+    private var vadJob: Job? = null
     private var wakeWordTriggered = false
+    private var multiTurnActive = false
 
     init {
         Log.i(TAG, "MainViewModel init start")
@@ -68,10 +70,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
 
-        // When voice flow completes after a wake-word trigger, resume KWS
+        // When voice flow completes after a wake-word trigger, resume KWS.
+        // In multi-turn mode, only resume when the session fully ends (multiTurnActive becomes false).
         viewModelScope.launch {
             _state.collect { s ->
-                if (wakeWordTriggered && s.voiceState is VoiceState.Idle) {
+                if (wakeWordTriggered && s.voiceState is VoiceState.Idle && !multiTurnActive) {
                     wakeWordTriggered = false
                     Log.i(TAG, "Wake-word voice flow complete, signaling resume")
                     WakeWordManager.notifyVoiceFlowDone()
@@ -85,6 +88,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 Log.i(TAG, "Wake word event received!")
                 if (_state.value.voiceState is VoiceState.Idle && _state.value.enginesReady) {
                     wakeWordTriggered = true
+                    multiTurnActive = true
                     launch(Dispatchers.IO) {
                         // Play acknowledgment to let user know the app is activated
                         _state.update { it.copy(voiceState = VoiceState.Speaking) }
@@ -93,15 +97,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             audioPlayer.play(pcm, ttsEngine.getSampleRate())
                         }
                         startListening()
-                        // Auto-stop recording after 6s
-                        autoStopJob?.cancel()
-                        autoStopJob = launch {
-                            delay(6000)
-                            if (_state.value.voiceState is VoiceState.Listening) {
-                                Log.i(TAG, "Auto-stopping recording after wake word")
-                                stopListening()
-                            }
-                        }
                     }
                 }
             }
@@ -201,6 +196,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _state.update { it.copy(partialAsrText = partial) }
                 }
         }
+
+        // VAD-based auto-stop when multi-turn mode is active
+        if (multiTurnActive) {
+            vadJob?.cancel()
+            vadJob = viewModelScope.launch {
+                val maxPeakWaitMs = 10000L      // wait up to 10s for speech to start
+                val silenceThresholdMs = 1500L   // 1.5s silence after speech → stop
+                val energyThreshold = 0.02f      // RMS energy above this = speaking
+
+                var speechDetected = false
+                var silenceStartMs: Long? = null
+                val startMs = System.currentTimeMillis()
+
+                while (true) {
+                    delay(200)
+                    val s = _state.value
+                    if (s.voiceState !is VoiceState.Listening) break
+
+                    // Estimate energy from partial ASR activity + recent audio
+                    val hasPartial = s.partialAsrText.isNotBlank()
+
+                    if (hasPartial) {
+                        speechDetected = true
+                        silenceStartMs = null
+                    } else if (speechDetected) {
+                        if (silenceStartMs == null) {
+                            silenceStartMs = System.currentTimeMillis()
+                        } else if (System.currentTimeMillis() - silenceStartMs!! >= silenceThresholdMs) {
+                            Log.i(TAG, "VAD: silence for ${silenceThresholdMs}ms after speech, auto-stopping")
+                            stopListening()
+                            break
+                        }
+                    }
+
+                    if (!speechDetected && System.currentTimeMillis() - startMs >= maxPeakWaitMs) {
+                        Log.i(TAG, "VAD: no speech detected for ${maxPeakWaitMs}ms, auto-stopping")
+                        stopListening()
+                        break
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -209,6 +246,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun stopListening() {
         Log.i(TAG, "stopListening: stopping recording")
         autoStopJob?.cancel()
+        vadJob?.cancel()
         audioRecorder.stopRecording()
         recordingJob?.cancel()
 
@@ -224,6 +262,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             Log.i(TAG, "stopListening: ASR final text='$text'")
             if (text.isBlank()) {
                 Log.w(TAG, "stopListening: ASR returned blank text, returning to idle")
+                multiTurnActive = false
                 _state.update { it.copy(voiceState = VoiceState.Idle, partialAsrText = "") }
                 return@launch
             }
@@ -232,6 +271,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             // Check config before sending
             if (!configRepository.hasConfig) {
+                multiTurnActive = false
                 _state.update {
                     it.copy(voiceState = VoiceState.Error("请先在设置中配置 API 信息"))
                 }
@@ -252,9 +292,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         Log.e(TAG, "stopListening: stream TTS failed", e)
                     }
                     Log.i(TAG, "stopListening: LLM reply complete, len=${fullReply.length}")
-                    _state.update { it.copy(voiceState = VoiceState.Idle) }
+                    if (multiTurnActive) {
+                        Log.i(TAG, "Multi-turn: auto-starting next listening round")
+                        startListening()
+                    } else {
+                        _state.update { it.copy(voiceState = VoiceState.Idle) }
+                    }
                 }
             }.onFailure { e ->
+                multiTurnActive = false
                 Log.e(TAG, "stopListening: LLM request failed", e)
                 _state.update { it.copy(voiceState = VoiceState.Error("请求失败: ${e.message}")) }
             }
@@ -411,8 +457,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _state.update { it.copy(voiceState = VoiceState.Idle) }
     }
 
+    /** User-initiated stop during TTS playback — exits multi-turn mode and resumes KWS. */
+    fun finishSpeaking() {
+        multiTurnActive = false
+        stopSpeaking()
+    }
+
     fun cancelListening() {
+        multiTurnActive = false
         autoStopJob?.cancel()
+        vadJob?.cancel()
         audioRecorder.stopRecording()
         recordingJob?.cancel()
         recordingJob = null

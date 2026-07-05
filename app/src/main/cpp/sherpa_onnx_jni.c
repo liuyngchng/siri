@@ -405,7 +405,7 @@ Java_com_rd_siri_audio_WakeWordEngine_nativeCreateSpotter(
 
     config.max_active_paths = 4;
     config.keywords_score = 3.0f;
-    config.keywords_threshold = 0.3f;
+    config.keywords_threshold = 0.05f;
     config.keywords_buf = c_kw;
     config.keywords_buf_size = (int32_t)strlen(c_kw);
 
@@ -442,31 +442,23 @@ Java_com_rd_siri_audio_WakeWordEngine_nativeDestroySpotter(
     LOGI("KWS: Spotter destroyed");
 }
 
-// ── KWS: Create Stream with keywords ───────────────────────────────────────
+// ── KWS: Create Stream ──────────────────────────────────────────────────────
 
 JNIEXPORT jlong JNICALL
 Java_com_rd_siri_audio_WakeWordEngine_nativeCreateStream(
-    JNIEnv *env, jclass clazz, jlong ptr, jstring keywords) {
+    JNIEnv *env, jclass clazz, jlong ptr) {
 
     if (ptr == 0) return 0;
     KwsState *state = (KwsState *)(intptr_t)ptr;
 
-    const char *c_kw = (*env)->GetStringUTFChars(env, keywords, NULL);
-    if (!c_kw) {
-        LOGE("KWS: Failed to get keywords string");
-        return 0;
-    }
-
     const SherpaOnnxOnlineStream *stream =
-        SherpaOnnxCreateKeywordStreamWithKeywords(state->spotter, c_kw);
-
-    (*env)->ReleaseStringUTFChars(env, keywords, c_kw);
+        SherpaOnnxCreateKeywordStream(state->spotter);
 
     if (!stream) {
         LOGE("KWS: Failed to create keyword stream");
         return 0;
     }
-    LOGI("KWS: Stream created with keywords");
+    LOGI("KWS: Stream created");
     return (jlong)(intptr_t)stream;
 }
 

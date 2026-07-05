@@ -69,10 +69,8 @@ class WakeWordEngine(private val context: Context) {
             return
         }
 
-        val kw = keywordsContent
-
         detectionThread = Thread {
-            runDetectionLoop(kw, onDetected)
+            runDetectionLoop(onDetected)
         }.apply {
             name = "WakeWordDetection"
             priority = Thread.NORM_PRIORITY
@@ -98,8 +96,8 @@ class WakeWordEngine(private val context: Context) {
 
     // ── Detection loop ───────────────────────────────────────────────────────
 
-    private fun runDetectionLoop(keywords: String, onDetected: (String) -> Unit) {
-        val streamPtr = nativeCreateStream(spotterPtr, keywords)
+    private fun runDetectionLoop(onDetected: (String) -> Unit) {
+        val streamPtr = nativeCreateStream(spotterPtr)
         if (streamPtr == 0L) {
             Log.e(TAG, "WakeWordEngine: failed to create keyword stream")
             isRunning.set(false)
@@ -177,7 +175,7 @@ class WakeWordEngine(private val context: Context) {
 
     private external fun nativeDestroySpotter(ptr: Long)
 
-    private external fun nativeCreateStream(ptr: Long, keywords: String): Long
+    private external fun nativeCreateStream(ptr: Long): Long
 
     private external fun nativeDestroyStream(streamPtr: Long)
 

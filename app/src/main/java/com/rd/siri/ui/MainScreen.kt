@@ -246,7 +246,7 @@ fun MainScreen(
                     }
                 },
                 onPressCancel = { viewModel.cancelListening() },
-                onStopSpeaking = { viewModel.stopSpeaking() }
+                onStopSpeaking = { viewModel.finishSpeaking() }
             )
 
             Spacer(modifier = Modifier.height(32.dp))
