@@ -10,6 +10,7 @@
 		0832BDEA9B7345CA9DCDC737 /* MainViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94539FC5D5074D9A932E50D3 /* MainViewModel.swift */; };
 		1087E93ADFF84A588DADE826 /* ChatSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39ED823038494F2BA82D4568 /* ChatSession.swift */; };
 		24133D224F564632BE6DCF84 /* ContentViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 237AF0FA117F4AF2A14F33DB /* ContentViewModel.swift */; };
+		2CC61C39401EF606C4D38B66 /* WakeWordManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 272D9A5F1B312E4A59579D9E /* WakeWordManager.swift */; };
 		2DCB61B4D3A44DBB8372207D /* ModelSetupScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = C97859028D774B4F82C91887 /* ModelSetupScreen.swift */; };
 		31EF43410F5A4DB4BE2F15D6 /* ModelSlotCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C14E112A5E81430C9BD0F42F /* ModelSlotCard.swift */; };
 		495E00872A1F4409A7ECBDC9 /* TarBz2Extractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C35A3E9980474859B66338FD /* TarBz2Extractor.swift */; };
@@ -33,22 +34,24 @@
 		A7BDED88EFF141278A38C1DA /* AudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B0484C3D07E4CF5911A6E65 /* AudioPlayer.swift */; };
 		AB08C49821514483A558DF91 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86B6DBF92BDB490B9DCA85C9 /* Extensions.swift */; };
 		B77EE3F598AC40F2BDBB88C5 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6616447CD980402EA4814893 /* KeychainHelper.swift */; };
-		D5116N70K3N5D3S1GN00001 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5116N70K3N5D3S1GN00002 /* DesignTokens.swift */; };
 		CDAF823AFEC54148B79A5140 /* ModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8630B520CE1C4A9BB6A9D124 /* ModelManager.swift */; };
+		D5116N70K3N5D3S1GN00001 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5116N70K3N5D3S1GN00002 /* DesignTokens.swift */; };
 		D9EE6C120D224DF694204F7B /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D1797D2C5DF446A922F971C /* AudioRecorder.swift */; };
 		DC8B4B5CA942F054C9ADD86F /* onnxruntime.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1802A84F3A9977B74A5747A0 /* onnxruntime.xcframework */; };
 		DE7BF72202BA4D86A35CA2E2 /* ChatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A235D6C3C94424A95A40247 /* ChatMessage.swift */; };
+		E0F33E60820C7CD6CD77F509 /* WakeWordEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B990B8F515BD07474B12E3E /* WakeWordEngine.swift */; };
 		E41EC46E95B34D5483E19B7E /* PulseRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2B41C65292243559B4B4427 /* PulseRing.swift */; };
 		E7B90FFFBDD34688A28DA1E3 /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD7E3C8DE001425E844B70D5 /* SettingsScreen.swift */; };
-		HUBSCR33N0000000000000001 /* SettingsHubScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = HUBSCR33N0000000000000002 /* SettingsHubScreen.swift */; };
 		F908660C16CEF2E1462DE5DE /* sherpa-onnx.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9B101175DE356BE3422C84DA /* sherpa-onnx.xcframework */; };
 		FF6340AEEB634F4ABBADBE4B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A423D23B65B45D08FE433E3 /* AppDelegate.swift */; };
+		HUBSCR33N0000000000000001 /* SettingsHubScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = HUBSCR33N0000000000000002 /* SettingsHubScreen.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		164EF0424FCF47FA92C68F81 /* MicButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicButton.swift; sourceTree = "<group>"; };
 		1802A84F3A9977B74A5747A0 /* onnxruntime.xcframework */ = {isa = PBXFileReference; includeInIndex = 1; name = onnxruntime.xcframework; path = Frameworks/onnxruntime.xcframework; sourceTree = "<group>"; };
 		237AF0FA117F4AF2A14F33DB /* ContentViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentViewModel.swift; sourceTree = "<group>"; };
+		272D9A5F1B312E4A59579D9E /* WakeWordManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WakeWordManager.swift; path = ../SiriApp/Audio/WakeWordManager.swift; sourceTree = "<group>"; };
 		3874D804AD334978926C780A /* MessageBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageBubble.swift; sourceTree = "<group>"; };
 		39ED823038494F2BA82D4568 /* ChatSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSession.swift; sourceTree = "<group>"; };
 		4CDB49A5CCE942FAA63DF656 /* TextNormalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextNormalizer.swift; sourceTree = "<group>"; };
@@ -64,8 +67,8 @@
 		7A235D6C3C94424A95A40247 /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessage.swift; sourceTree = "<group>"; };
 		8630B520CE1C4A9BB6A9D124 /* ModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManager.swift; sourceTree = "<group>"; };
 		86B6DBF92BDB490B9DCA85C9 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
+		8B990B8F515BD07474B12E3E /* WakeWordEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WakeWordEngine.swift; path = ../SiriApp/Audio/WakeWordEngine.swift; sourceTree = "<group>"; };
 		8E8A01A9FE3946858E89D654 /* LlmPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LlmPreset.swift; sourceTree = "<group>"; };
-		D5116N70K3N5D3S1GN00002 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		94539FC5D5074D9A932E50D3 /* MainViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewModel.swift; sourceTree = "<group>"; };
 		9A423D23B65B45D08FE433E3 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		9B0484C3D07E4CF5911A6E65 /* AudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayer.swift; sourceTree = "<group>"; };
@@ -76,13 +79,14 @@
 		C35A3E9980474859B66338FD /* TarBz2Extractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TarBz2Extractor.swift; sourceTree = "<group>"; };
 		C97859028D774B4F82C91887 /* ModelSetupScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelSetupScreen.swift; sourceTree = "<group>"; };
 		D4EAB841A334476DA8B7B0E9 /* ConfigViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigViewModel.swift; sourceTree = "<group>"; };
+		D5116N70K3N5D3S1GN00002 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		D74FD10E5EEA479584867D9C /* AudioSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionManager.swift; sourceTree = "<group>"; };
 		DD7E3C8DE001425E844B70D5 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
-		HUBSCR33N0000000000000002 /* SettingsHubScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsHubScreen.swift; sourceTree = "<group>"; };
 		E255AA2535AD4E5EA89AFFFA /* LlmClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LlmClient.swift; sourceTree = "<group>"; };
 		E2B41C65292243559B4B4427 /* PulseRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseRing.swift; sourceTree = "<group>"; };
 		FE4DD627403C4F4EBD2C1DB6 /* SherpaTtsEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SherpaTtsEngine.swift; sourceTree = "<group>"; };
 		FF8CB999AD3041E0ACD01996 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		HUBSCR33N0000000000000002 /* SettingsHubScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsHubScreen.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -134,6 +138,7 @@
 				79C8059D2FF7DF6700A08F5B /* Products */,
 				9B101175DE356BE3422C84DA /* sherpa-onnx.xcframework */,
 				1802A84F3A9977B74A5747A0 /* onnxruntime.xcframework */,
+				AC86F4C1357C9DD9FB37CCC3 /* Audio */,
 			);
 			sourceTree = "<group>";
 		};
@@ -212,6 +217,16 @@
 			path = Components;
 			sourceTree = "<group>";
 		};
+		AC86F4C1357C9DD9FB37CCC3 /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				8B990B8F515BD07474B12E3E /* WakeWordEngine.swift */,
+				272D9A5F1B312E4A59579D9E /* WakeWordManager.swift */,
+			);
+			name = Audio;
+			path = Audio;
+			sourceTree = "<group>";
+		};
 		DB67BB4D1A3843E598A5DE6E /* Views */ = {
 			isa = PBXGroup;
 			children = (
@@ -255,7 +270,7 @@
 				79C805982FF7DF6700A08F5B /* Sources */,
 				79C805992FF7DF6700A08F5B /* Frameworks */,
 				79C8059A2FF7DF6700A08F5B /* Resources */,
-				AF9C3B8CEBC14586B7926C5B /* Inject Info.plist Keys */,
+				AF9C3B8CEBC14586B7926C5B /* Inject Info.plist Keys (ATS + Export Compliance) */,
 			);
 			buildRules = (
 			);
@@ -311,6 +326,29 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		AF9C3B8CEBC14586B7926C5B /* Inject Info.plist Keys (ATS + Export Compliance) */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "Inject Info.plist Keys (ATS + Export Compliance)";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/InfoPlistInjected.stamp",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Add NSAppTransportSecurity + ITSAppUsesNonExemptEncryption to generated Info.plist\n# These keys cannot be set via INFOPLIST_KEY_ in Xcode 14.2\nPLIST=\"$TARGET_BUILD_DIR/$INFOPLIST_PATH\"\n\nif [ -f \"$PLIST\" ]; then\n    # Add ITSAppUsesNonExemptEncryption (skip if already exists)\n    if ! /usr/libexec/PlistBuddy -c \"Print :ITSAppUsesNonExemptEncryption\" \"$PLIST\" &>/dev/null; then\n        /usr/libexec/PlistBuddy -c \"Add :ITSAppUsesNonExemptEncryption bool false\" \"$PLIST\"\n        echo \"Added ITSAppUsesNonExemptEncryption = NO\"\n    fi\n\n    # Add NSAppTransportSecurity dict (skip if already exists)\n    if ! /usr/libexec/PlistBuddy -c \"Print :NSAppTransportSecurity\" \"$PLIST\" &>/dev/null; then\n        /usr/libexec/PlistBuddy -c \"Add :NSAppTransportSecurity dict\" \"$PLIST\"\n        /usr/libexec/PlistBuddy -c \"Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true\" \"$PLIST\"\n        echo \"Added NSAppTransportSecurity with NSAllowsLocalNetworking = YES\"\n    fi\nfi";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		79C805982FF7DF6700A08F5B /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -348,6 +386,8 @@
 				86186CD126BD4928B4D9585B /* MicButton.swift in Sources */,
 				31EF43410F5A4DB4BE2F15D6 /* ModelSlotCard.swift in Sources */,
 				E41EC46E95B34D5483E19B7E /* PulseRing.swift in Sources */,
+				E0F33E60820C7CD6CD77F509 /* WakeWordEngine.swift in Sources */,
+				2CC61C39401EF606C4D38B66 /* WakeWordManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -482,20 +522,20 @@
 					"$(PROJECT_DIR)/Frameworks",
 				);
 				GENERATE_INFOPLIST_FILE = YES;
-					INFOPLIST_KEY_CFBundleDisplayName = "语音助手";
-					INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-					INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
-					INFOPLIST_KEY_NSMicrophoneUsageDescription = "需要使用麦克风进行语音识别";
-					INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-					INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-					INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-					INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-					INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Frameworks/sherpa-onnx.xcframework/ios-arm64/Headers",
 					"$(PROJECT_DIR)/Frameworks/onnxruntime.xcframework/ios-arm64/onnxruntime.framework/Headers",
 				);
+				INFOPLIST_KEY_CFBundleDisplayName = "语音助手";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "需要使用麦克风进行语音识别";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -537,20 +577,20 @@
 					"$(PROJECT_DIR)/Frameworks",
 				);
 				GENERATE_INFOPLIST_FILE = YES;
-					INFOPLIST_KEY_CFBundleDisplayName = "语音助手";
-					INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-					INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
-					INFOPLIST_KEY_NSMicrophoneUsageDescription = "需要使用麦克风进行语音识别";
-					INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-					INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-					INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-					INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-					INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Frameworks/sherpa-onnx.xcframework/ios-arm64/Headers",
 					"$(PROJECT_DIR)/Frameworks/onnxruntime.xcframework/ios-arm64/onnxruntime.framework/Headers",
 				);
+				INFOPLIST_KEY_CFBundleDisplayName = "语音助手";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "需要使用麦克风进行语音识别";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -600,30 +640,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		AF9C3B8CEBC14586B7926C5B /* Inject Info.plist Keys */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)",
-			);
-			name = "Inject Info.plist Keys (ATS + Export Compliance)";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/InfoPlistInjected.stamp",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# Add NSAppTransportSecurity + ITSAppUsesNonExemptEncryption to generated Info.plist\n# These keys cannot be set via INFOPLIST_KEY_ in Xcode 14.2\nPLIST=\"$TARGET_BUILD_DIR/$INFOPLIST_PATH\"\n\nif [ -f \"$PLIST\" ]; then\n    # Add ITSAppUsesNonExemptEncryption (skip if already exists)\n    if ! /usr/libexec/PlistBuddy -c \"Print :ITSAppUsesNonExemptEncryption\" \"$PLIST\" &>/dev/null; then\n        /usr/libexec/PlistBuddy -c \"Add :ITSAppUsesNonExemptEncryption bool false\" \"$PLIST\"\n        echo \"Added ITSAppUsesNonExemptEncryption = NO\"\n    fi\n\n    # Add NSAppTransportSecurity dict (skip if already exists)\n    if ! /usr/libexec/PlistBuddy -c \"Print :NSAppTransportSecurity\" \"$PLIST\" &>/dev/null; then\n        /usr/libexec/PlistBuddy -c \"Add :NSAppTransportSecurity dict\" \"$PLIST\"\n        /usr/libexec/PlistBuddy -c \"Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true\" \"$PLIST\"\n        echo \"Added NSAppTransportSecurity with NSAllowsLocalNetworking = YES\"\n    fi\nfi";
-		};
-/* End PBXShellScriptBuildPhase section */
-
 	};
 	rootObject = 79C805942FF7DF6700A08F5B /* Project object */;
 }

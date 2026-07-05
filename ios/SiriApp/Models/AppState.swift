@@ -36,4 +36,6 @@ struct AppState {
     var finalAsrText: String = ""
     var assistantReply: String = ""
     var hasConfig: Bool = false
+    var wakeWordEnabled: Bool = false
+    var kwsReady: Bool = false
 }
