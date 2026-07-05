@@ -33,6 +33,7 @@ class MainViewModel: ObservableObject {
     private var recordingCancellable: AnyCancellable?
     private var streamingCancellable: AnyCancellable?
     private var speakingTask: Task<Void, Never>?
+    private var recognitionTask: Task<Void, Never>?
     private var engineCleanup: (() -> Void)?
 
     init() {
@@ -117,7 +118,8 @@ class MainViewModel: ObservableObject {
 
         state.voiceState = .recognizing
 
-        Task.detached(priority: .userInitiated) { [weak self] in
+        recognitionTask?.cancel()
+        recognitionTask = Task.detached(priority: .userInitiated) { [weak self] in
             guard let self = self else { return }
 
             let text = await MainActor.run { self.asrEngine.inputFinished() }
@@ -155,10 +157,17 @@ class MainViewModel: ObservableObject {
     }
 
     func cancelListening() {
-        os_log(.info, "MainVM: cancel listening")
+        os_log(.info, "MainVM: cancel all active operations")
         audioRecorder.stop()
         recordingCancellable?.cancel()
         recordingCancellable = nil
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        streamingCancellable?.cancel()
+        streamingCancellable = nil
+        speakingTask?.cancel()
+        speakingTask = nil
+        audioPlayer.stop()
         state.voiceState = .idle
         state.partialAsrText = ""
     }
@@ -275,5 +284,6 @@ class MainViewModel: ObservableObject {
         recordingCancellable?.cancel()
         streamingCancellable?.cancel()
         speakingTask?.cancel()
+        recognitionTask?.cancel()
     }
 }

@@ -2,15 +2,19 @@
 //  MicButton.swift
 //  SiriApp
 //
-//  Circular microphone button with press-hold-release gesture.
+//  Circular microphone button with hybrid gesture model:
 //
-//  Behavior:
-//  - Idle (gray):   Tap → show "请按住说话" reminder. Long press → start recording.
-//  - Listening (blue):  Release → stop + process. Short release → cancel.
-//  - Speaking (red):    Tap → no action. Long press → stop playback + start recording.
-//  - Recognizing/Thinking (blue): gesture ignored (system processing).
+//  - TAP (idle)       → toggle recording on; tap again to stop + process.
+//  - LONG PRESS (idle) → hold-to-talk recording; release to stop + process.
+//  - TAP (any active) → cancel / stop.
 //
-//  Ported from Android: MainScreen.kt (MicButton composable)
+//  States:
+//   idle              gray mic.fill        tap → toggle,  hold → talk
+//   listening         blue stop.fill       pulse ring (recording)
+//   recognizing       amber stop.fill      pulse ring (processing, tap to cancel)
+//   thinking          amber stop.fill      pulse ring (processing, tap to cancel)
+//   speaking          red stop.fill        pulse ring (tap to stop TTS only)
+//   loading/error     gray, disabled
 //
 
 import SwiftUI
@@ -26,26 +30,30 @@ struct MicButton: View {
 
     // MARK: - Adaptive sizing
 
-    /// Button diameter that scales with Dynamic Type.
     @ScaledMetric(relativeTo: .title) private var buttonSize: CGFloat = MicButtonMetrics.defaultSize
+
+    // MARK: - Internal gesture state
 
     @State private var isPressing = false
     @State private var thresholdReached = false
     @State private var showReminder = false
     @State private var pressWorkItem: DispatchWorkItem?
+    @State private var isToggleMode = false
 
-    /// Duration in seconds the user must hold before the press is treated as
-    /// intentional (triggers recording). Values below this are treated as a tap.
     private let longPressThreshold: TimeInterval = 0.3
 
-    /// How long the "请按住说话" reminder stays visible after a tap.
-    private let reminderDismissDelay: TimeInterval = 1.5
+    // MARK: - Derived state
 
-    // MARK: - Computed state
+    /// Recording (either toggle or hold mode).
+    private var isRecording: Bool {
+        if case .listening = voiceState { return true }
+        return false
+    }
 
-    private var isActive: Bool {
+    /// System is processing after recording — tap to cancel.
+    private var isProcessing: Bool {
         switch voiceState {
-        case .listening, .recognizing, .thinking: return true
+        case .recognizing, .thinking: return true
         default: return false
         }
     }
@@ -55,20 +63,15 @@ struct MicButton: View {
         return false
     }
 
-    /// States where the gesture should start a press timer
-    /// (idle: wait for threshold to start recording,
-    ///  speaking: wait for threshold to stop + record).
-    /// Other active states (.listening/.recognizing/.thinking) are ignored.
-    private var isInteractive: Bool {
-        switch voiceState {
-        case .idle, .speaking: return true
-        default: return false
-        }
+    /// Tapping the button during these states triggers a cancel/stop.
+    private var isActive: Bool {
+        isRecording || isProcessing || isSpeaking
     }
 
-    private var isRecognizingOrThinking: Bool {
+    /// States where gesture is completely disabled.
+    private var isDisabled: Bool {
         switch voiceState {
-        case .recognizing, .thinking: return true
+        case .loading, .error: return true
         default: return false
         }
     }
@@ -76,46 +79,63 @@ struct MicButton: View {
     // MARK: - Styling
 
     private var iconName: String {
+        if isProcessing { return "xmark.circle.fill" }
         if isActive { return "stop.fill" }
-        if isSpeaking { return "stop.fill" }
         return "mic.fill"
     }
 
     private var iconColor: Color {
         if isSpeaking { return ChatColors.micSpeakingForeground }
-        if isActive  { return ChatColors.micActiveForeground }
+        if isProcessing { return .white }
+        if isRecording { return ChatColors.micActiveForeground }
         return ChatColors.micIdleForeground
     }
 
     private var buttonBackground: Color {
         if isSpeaking { return ChatColors.micSpeakingBackground }
-        if isActive  { return ChatColors.micActiveBackground }
+        if isProcessing { return .orange }
+        if isRecording { return ChatColors.micActiveBackground }
         return ChatColors.micIdleBackground
     }
 
     private var pulseColor: Color {
-        isSpeaking ? ChatColors.micSpeakingBackground : ChatColors.micActiveBackground
+        if isSpeaking { return ChatColors.micSpeakingBackground }
+        if isProcessing { return .orange }
+        return ChatColors.micActiveBackground
+    }
+
+    private var showPulse: Bool {
+        isRecording || isProcessing || isSpeaking
+    }
+
+    private var statusHint: String {
+        if isToggleMode, isRecording { return "轻点停止" }
+        if isRecording { return "松手停止" }
+        if isProcessing { return "轻点取消" }
+        if isSpeaking { return "轻点停止播报" }
+        return "轻点切换 / 按住说话"
     }
 
     // MARK: - Body
 
     var body: some View {
         VStack(spacing: 12) {
-            // Reminder tip above the button
-            if showReminder {
-                Text("请按住说话")
-                    .font(.caption.weight(.medium))
-                    .foregroundColor(ChatColors.secondaryLabel)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Capsule().fill(Color(.systemGray6)))
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
-                    .animation(.easeInOut(duration: 0.25), value: showReminder)
-            }
+            // Status hint above the button
+            Text(statusHint)
+                .font(.caption2.weight(.medium))
+                .foregroundColor(ChatColors.tertiaryLabel)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule().fill(Color(.systemGray6).opacity(showReminder ? 1 : 0))
+                )
+                .opacity(isActive || showReminder ? 1 : 0)
+                .animation(.easeInOut(duration: 0.25), value: isActive)
+                .animation(.easeInOut(duration: 0.25), value: showReminder)
 
             ZStack {
-                // Pulse animation when active
-                if isActive {
+                // Pulse ring
+                if showPulse {
                     PulseRing(
                         size: buttonSize * MicButtonMetrics.pulseRingScale,
                         strokeWidth: 3,
@@ -131,9 +151,9 @@ struct MicButton: View {
                     .frame(width: buttonSize, height: buttonSize)
                     .background(buttonBackground)
                     .clipShape(Circle())
-                    .shadow(color: Color.black.opacity(isActive || isSpeaking ? 0 : 0.08),
+                    .shadow(color: Color.black.opacity(isActive ? 0 : 0.08),
                             radius: 6, x: 0, y: 3)
-                    .scaleEffect(isPressing && (isInteractive || (isActive && !isRecognizingOrThinking))
+                    .scaleEffect(isPressing && !isDisabled
                         ? MicButtonMetrics.pressScale : 1.0)
                     .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.7),
                                value: isPressing)
@@ -142,8 +162,14 @@ struct MicButton: View {
                             .onChanged { _ in handlePressDown() }
                             .onEnded { _ in handlePressUp() }
                     )
-                    .disabled(!enabled && !isSpeaking)
-                    .opacity(enabled || isSpeaking ? 1.0 : 0.5)
+                    .disabled(isDisabled)
+                    .opacity(enabled ? 1.0 : 0.5)
+            }
+        }
+        .onChange(of: voiceState) { newState in
+            // Reset toggle flag when returning to idle
+            if case .idle = newState {
+                isToggleMode = false
             }
         }
         .accessibilityElement(children: .contain)
@@ -156,56 +182,62 @@ struct MicButton: View {
 
     private var accessibilityHint: String {
         switch voiceState {
-        case .idle:       return "按住开始录音，松手结束"
-        case .listening:  return "正在录音，松开以结束"
-        case .recognizing: return "正在识别语音"
-        case .thinking:   return "正在思考回复"
-        case .speaking:   return "正在播报，按住可打断并重新录音"
+        case .idle:       return "轻点开始录音，或按住说话"
+        case .listening:  return isToggleMode ? "轻点以停止录音" : "松手以停止录音"
+        case .recognizing: return "正在识别语音，轻点取消"
+        case .thinking:   return "正在思考回复，轻点取消"
+        case .speaking:   return "正在播报，轻点停止"
         case .error:      return "发生错误，请检查配置"
         case .loading:    return "引擎加载中"
         }
     }
 
-    // MARK: - Gesture handlers
+    // MARK: - Gesture: press down
 
     private func handlePressDown() {
-        guard enabled else { return }
+        guard enabled, !isDisabled else { return }
 
-        // Ignore presses during system-processing states.
-        guard !isRecognizingOrThinking else { return }
+        // Universal cancel: processing or speaking → cancel immediately on press
+        if isProcessing {
+            provideHaptic(.heavy)
+            onPressCancel()
+            return
+        }
+        if isSpeaking {
+            provideHaptic(.light)
+            onStopSpeaking()
+            return
+        }
 
+        // Idle or recording — start tap-vs-hold detection
         if !isPressing {
             isPressing = true
             thresholdReached = false
             showReminder = false
             pressWorkItem?.cancel()
 
-            if isInteractive {
-                let work = DispatchWorkItem { [self] in
-                    guard isPressing else { return }
-                    thresholdReached = true
+            let work = DispatchWorkItem { [self] in
+                guard isPressing else { return }
+                thresholdReached = true
 
-                    if isSpeaking {
-                        onStopSpeaking()
-                        let gen = UIImpactFeedbackGenerator(style: .light)
-                        gen.prepare()
-                        gen.impactOccurred()
-                        onPressStart()
-                    } else {
-                        let gen = UIImpactFeedbackGenerator(style: .light)
-                        gen.prepare()
-                        gen.impactOccurred()
-                        onPressStart()
-                    }
+                // Long press threshold reached
+                if case .idle = voiceState {
+                    // Hold-to-talk
+                    isToggleMode = false
+                    provideHaptic(.light)
+                    onPressStart()
                 }
-                pressWorkItem = work
-                DispatchQueue.main.asyncAfter(
-                    deadline: .now() + longPressThreshold,
-                    execute: work
-                )
+                // During toggle recording: hold does nothing
             }
+            pressWorkItem = work
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + longPressThreshold,
+                execute: work
+            )
         }
     }
+
+    // MARK: - Gesture: press up
 
     private func handlePressUp() {
         guard isPressing else { return }
@@ -214,26 +246,42 @@ struct MicButton: View {
         pressWorkItem = nil
 
         if !thresholdReached {
-            if isSpeaking {
-                // Red button tap: no action.
-            } else if case .idle = voiceState {
-                let gen = UIImpactFeedbackGenerator(style: .light)
-                gen.impactOccurred()
-                withAnimation { showReminder = true }
-                DispatchQueue.main.asyncAfter(deadline: .now() + reminderDismissDelay) {
-                    showReminder = false
-                }
-            } else if case .listening = voiceState {
-                let gen = UIImpactFeedbackGenerator(style: .heavy)
-                gen.impactOccurred()
-                onPressCancel()
+            // Short tap (released before 0.3s threshold)
+            switch voiceState {
+            case .idle:
+                // Tap → start toggle recording
+                isToggleMode = true
+                showReminder = false
+                provideHaptic(.light)
+                onPressStart()
+
+            case .listening where isToggleMode:
+                // Tap again → stop toggle recording
+                isToggleMode = false
+                provideHaptic(.medium)
+                onPressEnd()
+
+            default:
+                break
             }
         } else {
-            if case .listening = voiceState {
+            // Long press threshold was reached
+            if case .listening = voiceState, !isToggleMode {
+                // Hold-to-talk release → stop recording
+                provideHaptic(.medium)
                 onPressEnd()
             }
+            // Toggle mode + threshold reached → ignore (hold does nothing in toggle mode)
         }
 
         thresholdReached = false
+    }
+
+    // MARK: - Haptics
+
+    private func provideHaptic(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
+        let gen = UIImpactFeedbackGenerator(style: style)
+        gen.prepare()
+        gen.impactOccurred()
     }
 }
