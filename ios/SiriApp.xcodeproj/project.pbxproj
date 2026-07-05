@@ -33,6 +33,7 @@
 		A7BDED88EFF141278A38C1DA /* AudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B0484C3D07E4CF5911A6E65 /* AudioPlayer.swift */; };
 		AB08C49821514483A558DF91 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86B6DBF92BDB490B9DCA85C9 /* Extensions.swift */; };
 		B77EE3F598AC40F2BDBB88C5 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6616447CD980402EA4814893 /* KeychainHelper.swift */; };
+		D5116N70K3N5D3S1GN00001 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5116N70K3N5D3S1GN00002 /* DesignTokens.swift */; };
 		CDAF823AFEC54148B79A5140 /* ModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8630B520CE1C4A9BB6A9D124 /* ModelManager.swift */; };
 		D9EE6C120D224DF694204F7B /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D1797D2C5DF446A922F971C /* AudioRecorder.swift */; };
 		DC8B4B5CA942F054C9ADD86F /* onnxruntime.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1802A84F3A9977B74A5747A0 /* onnxruntime.xcframework */; };
@@ -63,6 +64,7 @@
 		8630B520CE1C4A9BB6A9D124 /* ModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManager.swift; sourceTree = "<group>"; };
 		86B6DBF92BDB490B9DCA85C9 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		8E8A01A9FE3946858E89D654 /* LlmPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LlmPreset.swift; sourceTree = "<group>"; };
+		D5116N70K3N5D3S1GN00002 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		94539FC5D5074D9A932E50D3 /* MainViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewModel.swift; sourceTree = "<group>"; };
 		9A423D23B65B45D08FE433E3 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		9B0484C3D07E4CF5911A6E65 /* AudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayer.swift; sourceTree = "<group>"; };
@@ -226,6 +228,7 @@
 				6616447CD980402EA4814893 /* KeychainHelper.swift */,
 				8630B520CE1C4A9BB6A9D124 /* ModelManager.swift */,
 				C35A3E9980474859B66338FD /* TarBz2Extractor.swift */,
+				D5116N70K3N5D3S1GN00002 /* DesignTokens.swift */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -321,6 +324,7 @@
 				B77EE3F598AC40F2BDBB88C5 /* KeychainHelper.swift in Sources */,
 				CDAF823AFEC54148B79A5140 /* ModelManager.swift in Sources */,
 				495E00872A1F4409A7ECBDC9 /* TarBz2Extractor.swift in Sources */,
+				D5116N70K3N5D3S1GN00001 /* DesignTokens.swift in Sources */,
 				4FE92A09D578418AA2FEBEFB /* ConfigRepository.swift in Sources */,
 				8DBBFAAEB0634A1C84A79D7F /* ConfigViewModel.swift in Sources */,
 				1087E93ADFF84A588DADE826 /* ChatSession.swift in Sources */,
