@@ -169,10 +169,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     } catch (e: Exception) {
                         Log.e(TAG, "stopListening: stream TTS failed", e)
                     }
-                    val reply = fullReply.toString()
-                    Log.i(TAG, "stopListening: LLM reply complete, len=${reply.length}")
-                    chatSession.appendAssistantReply(reply)
-                    _state.update { it.copy(voiceState = VoiceState.Idle, assistantReply = reply) }
+                    Log.i(TAG, "stopListening: LLM reply complete, len=${fullReply.length}")
+                    _state.update { it.copy(voiceState = VoiceState.Idle) }
                 }
             }.onFailure { e ->
                 Log.e(TAG, "stopListening: LLM request failed", e)
@@ -310,6 +308,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 sentenceChannel.close()
             }
+
+            // Save reply to messages immediately — don't wait for TTS playback
+            val reply = accumulator.toString()
+            if (reply.isNotBlank()) {
+                chatSession.appendAssistantReply(reply)
+            }
+            _state.update { it.copy(assistantReply = reply) }
 
             // Wait for synthesis and playback to finish
             synthJob.join()

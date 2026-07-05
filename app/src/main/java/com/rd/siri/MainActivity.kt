@@ -16,8 +16,11 @@ import com.rd.siri.model.ModelManager
 import com.rd.siri.ui.MainScreen
 import com.rd.siri.ui.MainViewModel
 import com.rd.siri.ui.ModelSetupScreen
+import com.rd.siri.ui.SettingsHubScreen
 import com.rd.siri.ui.SettingsScreen
 import com.rd.siri.ui.theme.SiriTheme
+
+private enum class SettingsSubScreen { LLM_CONFIG, MODEL_SETUP }
 
 class MainActivity : ComponentActivity() {
 
@@ -42,6 +45,7 @@ class MainActivity : ComponentActivity() {
             Log.d(TAG, "setContent composing")
             SiriTheme {
                 var showSettings by remember { mutableStateOf(false) }
+                var settingsSubScreen by remember { mutableStateOf<SettingsSubScreen?>(null) }
                 var modelsReady by remember {
                     mutableStateOf(ModelManager.checkAllReady(this@MainActivity))
                 }
@@ -49,23 +53,39 @@ class MainActivity : ComponentActivity() {
                 var setupComplete by remember { mutableStateOf(config != null) }
 
                 if (!modelsReady) {
+                    // First-run wizard step 1: download voice models
                     ModelSetupScreen(
                         onReady = { modelsReady = true }
                     )
                 } else if (!setupComplete) {
+                    // First-run wizard step 2: configure LLM API
                     SettingsScreen(
                         viewModel = configViewModel,
                         onBack = { setupComplete = true }
                     )
                 } else if (showSettings) {
-                    SettingsScreen(
-                        viewModel = configViewModel,
-                        onBack = { showSettings = false }
-                    )
+                    // Post-setup: settings hub with sub-navigation
+                    when (settingsSubScreen) {
+                        null -> SettingsHubScreen(
+                            onNavigateToLlmConfig = { settingsSubScreen = SettingsSubScreen.LLM_CONFIG },
+                            onNavigateToModelSetup = { settingsSubScreen = SettingsSubScreen.MODEL_SETUP },
+                            onDismiss = { showSettings = false }
+                        )
+                        SettingsSubScreen.LLM_CONFIG -> SettingsScreen(
+                            viewModel = configViewModel,
+                            onBack = { settingsSubScreen = null }
+                        )
+                        SettingsSubScreen.MODEL_SETUP -> ModelSetupScreen(
+                            onBack = { settingsSubScreen = null }
+                        )
+                    }
                 } else {
                     MainScreen(
                         viewModel = mainViewModel,
-                        onNavigateToSettings = { showSettings = true }
+                        onNavigateToSettings = {
+                            showSettings = true
+                            settingsSubScreen = null
+                        }
                     )
                 }
             }

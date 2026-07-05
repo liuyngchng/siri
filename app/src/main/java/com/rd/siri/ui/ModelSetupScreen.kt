@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -30,7 +31,10 @@ data class SlotState(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ModelSetupScreen(onReady: () -> Unit) {
+fun ModelSetupScreen(
+    onReady: (() -> Unit)? = null,
+    onBack: (() -> Unit)? = null
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -158,7 +162,16 @@ fun ModelSetupScreen(onReady: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("模型设置") })
+            TopAppBar(
+                title = { Text("模型设置") },
+                navigationIcon = {
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Filled.ArrowBack, contentDescription = "返回")
+                        }
+                    }
+                }
+            )
         }
     ) { padding ->
         Column(
@@ -225,17 +238,19 @@ fun ModelSetupScreen(onReady: () -> Unit) {
                 onDownload = { downloadVocoder() }
             )
 
-            Spacer(modifier = Modifier.weight(1f))
+            // Start button (only in first-run wizard mode)
+            if (onReady != null) {
+                Spacer(modifier = Modifier.weight(1f))
 
-            // Start button
-            Button(
-                onClick = onReady,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = allReady && !anyExtracting,
-                shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(vertical = 12.dp)
-            ) {
-                Text("下一步", style = MaterialTheme.typography.titleMedium)
+                Button(
+                    onClick = onReady,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = allReady && !anyExtracting,
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(vertical = 12.dp)
+                ) {
+                    Text("下一步", style = MaterialTheme.typography.titleMedium)
+                }
             }
         }
     }

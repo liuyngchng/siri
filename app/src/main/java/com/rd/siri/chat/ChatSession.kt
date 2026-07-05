@@ -6,26 +6,46 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class ChatSession(private val llmClient: LlmClient) {
+class ChatSession(
+    private val llmClient: LlmClient,
+    private val maxHistory: Int = 5,
+    private val maxScreenMessages: Int = 20
+) {
 
-    companion object {
-        private const val MAX_HISTORY = 2
-    }
-
+    /** Messages shown on screen — capped at [maxScreenMessages]. */
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
 
+    /**
+     * Full LLM context buffer — preserved across screen clears.
+     * Grows unboundedly; only the last [maxHistory] messages are sent to the LLM.
+     */
+    private val contextBuffer = mutableListOf<ChatMessage>()
+
+    /** LLM context window: last [maxHistory] messages from the full context buffer. */
+    private val contextMessages: List<ChatMessage>
+        get() = contextBuffer.takeLast(maxHistory)
+
+    /** Append a message to the on-screen list, trimming to [maxScreenMessages]. */
+    private fun appendToScreen(msg: ChatMessage) {
+        _messages.value = (_messages.value + msg).takeLast(maxScreenMessages)
+    }
+
     suspend fun send(text: String): Result<String> {
         val userMsg = ChatMessage(role = ChatMessage.Role.USER, content = text)
-        _messages.value = (_messages.value + userMsg).takeLast(MAX_HISTORY)
+        appendToScreen(userMsg)
+        contextBuffer.add(userMsg)
 
-        val result = llmClient.chat(_messages.value)
+        val result = llmClient.chat(contextMessages)
 
         result.onSuccess { reply ->
             val assistantMsg = ChatMessage(role = ChatMessage.Role.ASSISTANT, content = reply)
-            _messages.value = (_messages.value + assistantMsg).takeLast(MAX_HISTORY)
+            appendToScreen(assistantMsg)
+            contextBuffer.add(assistantMsg)
         }.onFailure {
+            // Rollback both buffers on failure
             _messages.value = _messages.value.dropLast(1)
+            contextBuffer.removeLast()
         }
 
         return result
@@ -33,13 +53,15 @@ class ChatSession(private val llmClient: LlmClient) {
 
     suspend fun sendStream(text: String): Result<Flow<String>> {
         val userMsg = ChatMessage(role = ChatMessage.Role.USER, content = text)
-        _messages.value = (_messages.value + userMsg).takeLast(MAX_HISTORY)
+        appendToScreen(userMsg)
+        contextBuffer.add(userMsg)
 
         return try {
-            val flow = llmClient.chatStream(_messages.value)
+            val flow = llmClient.chatStream(contextMessages)
             Result.success(flow)
         } catch (e: Exception) {
             _messages.value = _messages.value.dropLast(1)
+            contextBuffer.removeLast()
             Result.failure(e)
         }
     }
@@ -47,11 +69,14 @@ class ChatSession(private val llmClient: LlmClient) {
     fun appendAssistantReply(text: String) {
         if (text.isBlank()) return
         val assistantMsg = ChatMessage(role = ChatMessage.Role.ASSISTANT, content = text)
-        _messages.value = (_messages.value + assistantMsg).takeLast(MAX_HISTORY)
+        appendToScreen(assistantMsg)
+        contextBuffer.add(assistantMsg)
     }
 
+    /** Full clear — both screen and LLM context (user-initiated). */
     fun clear() {
         _messages.value = emptyList()
+        contextBuffer.clear()
     }
 
     val messageCount: Int

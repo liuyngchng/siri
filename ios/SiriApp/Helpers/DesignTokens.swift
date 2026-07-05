@@ -68,7 +68,7 @@ enum ChatSpacing {
 
 enum ChatBubbleMetrics {
     /// Maximum bubble width as a fraction of the available width.
-    static let maxWidthFraction: CGFloat = 0.72
+    static let maxWidthFraction: CGFloat = 0.80
     /// Hard cap for bubble width on iPad landscape.
     static let maxWidthCap: CGFloat = 480
     /// Corner radius for message bubbles.
