@@ -26,10 +26,17 @@ struct LlmConfig: Codable, Equatable {
             && (apiUrl.hasPrefix("http://") || apiUrl.hasPrefix("https://"))
     }
 
+    /// Whether this provider supports the `enable_search` parameter.
+    var supportsWebSearch: Bool {
+        apiUrl.contains("dashscope.aliyuncs.com")
+    }
+
     init(apiUrl: String, model: String, apiKey: String, enableSearch: Bool = true) {
         self.apiUrl = apiUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         self.model = model.trimmingCharacters(in: .whitespaces)
         self.apiKey = apiKey.trimmingCharacters(in: .whitespaces)
-        self.enableSearch = enableSearch
+        // Bailian always supports web search
+        let isBailian = self.apiUrl.contains("dashscope.aliyuncs.com")
+        self.enableSearch = enableSearch || isBailian
     }
 }

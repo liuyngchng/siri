@@ -141,30 +141,41 @@ struct MainScreen: View {
         }
     }
 
-    // MARK: - Mic Bar
+    // MARK: - Mic Bar (blurred bottom bar)
 
     private var micBar: some View {
-        MicButton(
-            voiceState: viewModel.state.voiceState,
-            enabled: viewModel.state.enginesReady,
-            onPressStart: {
-                _ = viewModel.checkConfig()
-                viewModel.startListening()
-            },
-            onPressEnd: {
-                if case .listening = viewModel.state.voiceState {
-                    viewModel.stopListening()
+        VStack(spacing: 0) {
+            // Subtle separator line
+            Rectangle()
+                .fill(Color(.separator).opacity(0.3))
+                .frame(height: 0.5)
+
+            MicButton(
+                voiceState: viewModel.state.voiceState,
+                enabled: viewModel.state.enginesReady,
+                onPressStart: {
+                    _ = viewModel.checkConfig()
+                    viewModel.startListening()
+                },
+                onPressEnd: {
+                    if case .listening = viewModel.state.voiceState {
+                        viewModel.stopListening()
+                    }
+                },
+                onPressCancel: {
+                    viewModel.cancelListening()
+                },
+                onStopSpeaking: {
+                    viewModel.stopSpeaking()
                 }
-            },
-            onPressCancel: {
-                viewModel.cancelListening()
-            },
-            onStopSpeaking: {
-                viewModel.stopSpeaking()
-            }
+            )
+            .padding(.top, ChatSpacing.pt8)
+            .padding(.bottom, ChatSpacing.pt6)
+        }
+        .background(
+            BlurView(style: .systemMaterial)
+                .edgesIgnoringSafeArea(.bottom)
         )
-        .padding(.top, ChatSpacing.pt12)
-        .padding(.bottom, ChatSpacing.pt16)
     }
 
     // MARK: - Toolbar

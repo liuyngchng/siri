@@ -259,7 +259,7 @@ class LlmClient {
             "top_p": params.topP,
         ]
 
-        if config.enableSearch {
+        if config.enableSearch && config.supportsWebSearch {
             body["enable_search"] = true
         }
 

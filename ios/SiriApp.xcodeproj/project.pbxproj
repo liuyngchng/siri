@@ -27,6 +27,7 @@
 		79C805A42FF7DF6800A08F5B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 79C805A32FF7DF6800A08F5B /* Assets.xcassets */; };
 		79C805A72FF7DF6800A08F5B /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 79C805A62FF7DF6800A08F5B /* Preview Assets.xcassets */; };
 		86186CD126BD4928B4D9585B /* MicButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 164EF0424FCF47FA92C68F81 /* MicButton.swift */; };
+		7A310C16DF4B49E3B1B9522A /* BlurView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A19570C62F284A979FD20F64 /* BlurView.swift */; };
 		8729A560BF814BCA8635DD76 /* MainScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526A1237892D4644ACB127EC /* MainScreen.swift */; };
 		8DBBFAAEB0634A1C84A79D7F /* ConfigViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4EAB841A334476DA8B7B0E9 /* ConfigViewModel.swift */; };
 		948274C2A2DA43FBBDD71E9E /* MessageBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3874D804AD334978926C780A /* MessageBubble.swift */; };
@@ -49,6 +50,7 @@
 
 /* Begin PBXFileReference section */
 		164EF0424FCF47FA92C68F81 /* MicButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicButton.swift; sourceTree = "<group>"; };
+		A19570C62F284A979FD20F64 /* BlurView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlurView.swift; sourceTree = "<group>"; };
 		1802A84F3A9977B74A5747A0 /* onnxruntime.xcframework */ = {isa = PBXFileReference; includeInIndex = 1; name = onnxruntime.xcframework; path = Frameworks/onnxruntime.xcframework; sourceTree = "<group>"; };
 		237AF0FA117F4AF2A14F33DB /* ContentViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentViewModel.swift; sourceTree = "<group>"; };
 		272D9A5F1B312E4A59579D9E /* WakeWordManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WakeWordManager.swift; path = ../SiriApp/Audio/WakeWordManager.swift; sourceTree = "<group>"; };
@@ -211,6 +213,7 @@
 			children = (
 				3874D804AD334978926C780A /* MessageBubble.swift */,
 				164EF0424FCF47FA92C68F81 /* MicButton.swift */,
+				A19570C62F284A979FD20F64 /* BlurView.swift */,
 				C14E112A5E81430C9BD0F42F /* ModelSlotCard.swift */,
 				E2B41C65292243559B4B4427 /* PulseRing.swift */,
 			);
@@ -384,6 +387,7 @@
 				2DCB61B4D3A44DBB8372207D /* ModelSetupScreen.swift in Sources */,
 				948274C2A2DA43FBBDD71E9E /* MessageBubble.swift in Sources */,
 				86186CD126BD4928B4D9585B /* MicButton.swift in Sources */,
+				7A310C16DF4B49E3B1B9522A /* BlurView.swift in Sources */,
 				31EF43410F5A4DB4BE2F15D6 /* ModelSlotCard.swift in Sources */,
 				E41EC46E95B34D5483E19B7E /* PulseRing.swift in Sources */,
 				E0F33E60820C7CD6CD77F509 /* WakeWordEngine.swift in Sources */,
