@@ -21,14 +21,20 @@ object ModelManager {
     private const val NATIVE_LIB = "libsherpa-onnx.so"
     const val ASR_MODEL_DIR = "asr"
     const val TTS_MODEL_DIR = "tts"
+    const val KWS_MODEL_DIR = "kws"
 
     private val ASR_REQUIRED = listOf("model.int8.onnx", "tokens.txt")
     private val TTS_REQUIRED = listOf("model.onnx", "vocos.onnx", "tokens.txt", "lexicon.txt")
+    private val KWS_REQUIRED = listOf("encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt")
 
     // Normalize well-known file names after extraction
     private val RENAME_MAP = mapOf(
         "model-steps-3.onnx" to "model.onnx",
         "vocos-22khz-univ.onnx" to "vocos.onnx",
+        // KWS model: use standard short names
+        "encoder-epoch-12-avg-2-chunk-16-left-64.int8.onnx" to "encoder.onnx",
+        "decoder-epoch-12-avg-2-chunk-16-left-64.onnx" to "decoder.onnx",
+        "joiner-epoch-12-avg-2-chunk-16-left-64.int8.onnx" to "joiner.onnx",
     )
 
     // Download URLs
@@ -38,6 +44,8 @@ object ModelManager {
         "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-zh-baker.tar.bz2"
     private const val VOCODER_DOWNLOAD_URL =
         "https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-22khz-univ.onnx"
+    private const val KWS_DOWNLOAD_URL =
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/kws-models/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01.tar.bz2"
 
     private val downloadClient = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -68,6 +76,32 @@ object ModelManager {
 
     fun checkVocoderReady(context: Context): Boolean =
         File(modelsDir(context), "$TTS_MODEL_DIR/vocos.onnx").exists()
+
+    fun checkKwsReady(context: Context): Boolean =
+        KWS_REQUIRED.all { File(modelsDir(context), "$KWS_MODEL_DIR/$it").exists() }
+
+    fun downloadAndExtractKws(context: Context, onProgress: (Float) -> Unit): Result<Unit> {
+        return try {
+            val tmpFile = File(context.cacheDir, "kws_model.tar.bz2")
+            Log.i(TAG, "Downloading KWS model from $KWS_DOWNLOAD_URL")
+            downloadFile(KWS_DOWNLOAD_URL, tmpFile) { p -> onProgress(p * 0.5f) }
+
+            Log.i(TAG, "Extracting KWS model from bzip2 tar")
+            tmpFile.inputStream().use { fileIn ->
+                BZip2CompressorInputStream(fileIn).use { bz2 ->
+                    extractTarStream(context, bz2, KWS_MODEL_DIR, -1) { p ->
+                        onProgress(0.5f + p * 0.5f)
+                    }
+                }
+            }
+            tmpFile.delete()
+            Log.i(TAG, "KWS download + extract complete")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "KWS download + extract failed", e)
+            Result.failure(e)
+        }
+    }
 
     fun getNativeLibPath(context: Context): String? {
         val f = File(libDir(context), NATIVE_LIB)

@@ -1,11 +1,18 @@
 package com.rd.siri.ui
 
+import android.Manifest
 import android.app.Application
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.rd.siri.audio.AudioPlayer
 import com.rd.siri.audio.AudioRecorder
+import com.rd.siri.audio.VoiceService
+import com.rd.siri.audio.WakeWordManager
 import com.rd.siri.asr.SherpaAsrEngine
 import com.rd.siri.chat.ChatSession
 import com.rd.siri.chat.LlmClient
@@ -18,6 +25,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,9 +55,58 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var recordingJob: Job? = null
     private var streamingJob: Job? = null
     private var speakingJob: Job? = null
+    private var autoStopJob: Job? = null
+    private var wakeWordTriggered = false
 
     init {
         Log.i(TAG, "MainViewModel init start")
+
+        // Observe wake word state from service (source of truth for UI)
+        viewModelScope.launch {
+            WakeWordManager.isRunning.collect { running ->
+                _state.update { it.copy(wakeWordEnabled = running) }
+            }
+        }
+
+        // When voice flow completes after a wake-word trigger, resume KWS
+        viewModelScope.launch {
+            _state.collect { s ->
+                if (wakeWordTriggered && s.voiceState is VoiceState.Idle) {
+                    wakeWordTriggered = false
+                    Log.i(TAG, "Wake-word voice flow complete, signaling resume")
+                    WakeWordManager.notifyVoiceFlowDone()
+                }
+            }
+        }
+
+        // Listen for wake word events
+        viewModelScope.launch {
+            WakeWordManager.wakeEvents.collect {
+                Log.i(TAG, "Wake word event received!")
+                if (_state.value.voiceState is VoiceState.Idle && _state.value.enginesReady) {
+                    wakeWordTriggered = true
+                    launch(Dispatchers.IO) {
+                        // Play acknowledgment to let user know the app is activated
+                        _state.update { it.copy(voiceState = VoiceState.Speaking) }
+                        val pcm = ttsEngine.synthesize("哎，我在呢", sid = 0)
+                        if (pcm != null) {
+                            audioPlayer.play(pcm, ttsEngine.getSampleRate())
+                        }
+                        startListening()
+                        // Auto-stop recording after 6s
+                        autoStopJob?.cancel()
+                        autoStopJob = launch {
+                            delay(6000)
+                            if (_state.value.voiceState is VoiceState.Listening) {
+                                Log.i(TAG, "Auto-stopping recording after wake word")
+                                stopListening()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
             _state.update { it.copy(voiceState = VoiceState.Loading("模型加载中…")) }
 
@@ -67,6 +124,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 } else {
                     it.copy(voiceState = VoiceState.Error("模型加载失败，请检查模型文件"))
                 }
+            }
+        }
+    }
+
+    fun isWakeWordEnabled(): Boolean = _state.value.wakeWordEnabled
+
+    fun toggleWakeWord(enable: Boolean) {
+        if (enable && ContextCompat.checkSelfPermission(
+                getApplication(), Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            _state.update { it.copy(voiceState = VoiceState.Error("请先授予麦克风权限")) }
+            return
+        }
+
+        val intent = Intent(getApplication(), VoiceService::class.java).apply {
+            action = if (enable) VoiceService.ACTION_START else VoiceService.ACTION_STOP
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (enable) {
+                getApplication<Application>().startForegroundService(intent)
+            } else {
+                getApplication<Application>().stopService(intent)
             }
         }
     }
@@ -127,6 +208,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun stopListening() {
         Log.i(TAG, "stopListening: stopping recording")
+        autoStopJob?.cancel()
         audioRecorder.stopRecording()
         recordingJob?.cancel()
 
@@ -330,6 +412,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun cancelListening() {
+        autoStopJob?.cancel()
         audioRecorder.stopRecording()
         recordingJob?.cancel()
         recordingJob = null

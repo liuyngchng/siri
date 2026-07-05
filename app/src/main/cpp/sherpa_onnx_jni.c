@@ -309,3 +309,248 @@ Java_com_rd_siri_tts_SherpaTtsEngine_nativeDestroyTts(
     free(state);
     LOGI("TTS: Destroyed");
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// KWS: Keyword Spotting (wake word detection)
+// ═══════════════════════════════════════════════════════════════════════════
+
+#include <dirent.h>
+
+typedef struct {
+    const SherpaOnnxKeywordSpotter *spotter;
+} KwsState;
+
+// Try standard short name first, then fall back to scanning the directory
+// for a file whose name contains `keyword` and ends with `suffix`.
+static void find_model_file(const char *dir, const char *keyword,
+                            const char *suffix, char *out, size_t out_size) {
+    out[0] = '\0';
+
+    // First try the standard short name
+    char std_name[256];
+    snprintf(std_name, sizeof(std_name), "%s/%s%s", dir, keyword, suffix);
+    FILE *f = fopen(std_name, "rb");
+    if (f) {
+        fclose(f);
+        snprintf(out, out_size, "%s", std_name);
+        return;
+    }
+
+    // Fallback: scan directory for a file containing the keyword
+    DIR *d = opendir(dir);
+    if (!d) return;
+    struct dirent *entry;
+    while ((entry = readdir(d)) != NULL) {
+        const char *name = entry->d_name;
+        if (strstr(name, keyword) == NULL) continue;
+        size_t name_len = strlen(name);
+        size_t suf_len = strlen(suffix);
+        if (name_len >= suf_len
+            && strcmp(name + name_len - suf_len, suffix) == 0) {
+            snprintf(out, out_size, "%s/%s", dir, name);
+            break;
+        }
+    }
+    closedir(d);
+}
+
+// ── KWS: Create Spotter ────────────────────────────────────────────────────
+
+JNIEXPORT jlong JNICALL
+Java_com_rd_siri_audio_WakeWordEngine_nativeCreateSpotter(
+    JNIEnv *env, jclass clazz, jstring modelDir, jstring keywords, jint numThreads) {
+
+    const char *c_dir = (*env)->GetStringUTFChars(env, modelDir, NULL);
+    const char *c_kw = (*env)->GetStringUTFChars(env, keywords, NULL);
+    if (!c_dir || !c_kw) {
+        LOGE("KWS: Failed to get path string");
+        if (c_dir) (*env)->ReleaseStringUTFChars(env, modelDir, c_dir);
+        if (c_kw) (*env)->ReleaseStringUTFChars(env, keywords, c_kw);
+        return 0;
+    }
+
+    char encoder_path[1024];
+    char decoder_path[1024];
+    char joiner_path[1024];
+    char tokens_path[1024];
+
+    find_model_file(c_dir, "encoder", ".onnx", encoder_path, sizeof(encoder_path));
+    find_model_file(c_dir, "decoder", ".onnx", decoder_path, sizeof(decoder_path));
+    find_model_file(c_dir, "joiner", ".onnx", joiner_path, sizeof(joiner_path));
+    find_model_file(c_dir, "tokens", ".txt", tokens_path, sizeof(tokens_path));
+
+    LOGI("KWS: encoder=%s, decoder=%s, joiner=%s, tokens=%s",
+         encoder_path, decoder_path, joiner_path, tokens_path);
+
+    if (!encoder_path[0] || !decoder_path[0] || !joiner_path[0] || !tokens_path[0]) {
+        LOGE("KWS: Missing model files in %s", c_dir);
+        (*env)->ReleaseStringUTFChars(env, modelDir, c_dir);
+        (*env)->ReleaseStringUTFChars(env, keywords, c_kw);
+        return 0;
+    }
+
+    SherpaOnnxKeywordSpotterConfig config;
+    memset(&config, 0, sizeof(config));
+
+    config.feat_config.sample_rate = 16000;
+    config.feat_config.feature_dim = 80;
+
+    config.model_config.transducer.encoder = encoder_path;
+    config.model_config.transducer.decoder = decoder_path;
+    config.model_config.transducer.joiner = joiner_path;
+    config.model_config.tokens = tokens_path;
+    config.model_config.num_threads = (int32_t)numThreads;
+    config.model_config.provider = "cpu";
+    config.model_config.debug = 0;
+
+    config.max_active_paths = 4;
+    config.keywords_score = 3.0f;
+    config.keywords_threshold = 0.3f;
+    config.keywords_buf = c_kw;
+    config.keywords_buf_size = (int32_t)strlen(c_kw);
+
+    const SherpaOnnxKeywordSpotter *spotter = SherpaOnnxCreateKeywordSpotter(&config);
+
+    (*env)->ReleaseStringUTFChars(env, modelDir, c_dir);
+    (*env)->ReleaseStringUTFChars(env, keywords, c_kw);
+
+    if (!spotter) {
+        LOGE("KWS: Failed to create spotter");
+        return 0;
+    }
+
+    KwsState *state = malloc(sizeof(KwsState));
+    memset(state, 0, sizeof(KwsState));
+    state->spotter = spotter;
+
+    LOGI("KWS: Spotter created successfully");
+    return (jlong)(intptr_t)state;
+}
+
+// ── KWS: Destroy Spotter ───────────────────────────────────────────────────
+
+JNIEXPORT void JNICALL
+Java_com_rd_siri_audio_WakeWordEngine_nativeDestroySpotter(
+    JNIEnv *env, jclass clazz, jlong ptr) {
+
+    if (ptr == 0) return;
+    KwsState *state = (KwsState *)(intptr_t)ptr;
+    if (state->spotter) {
+        SherpaOnnxDestroyKeywordSpotter(state->spotter);
+    }
+    free(state);
+    LOGI("KWS: Spotter destroyed");
+}
+
+// ── KWS: Create Stream with keywords ───────────────────────────────────────
+
+JNIEXPORT jlong JNICALL
+Java_com_rd_siri_audio_WakeWordEngine_nativeCreateStream(
+    JNIEnv *env, jclass clazz, jlong ptr, jstring keywords) {
+
+    if (ptr == 0) return 0;
+    KwsState *state = (KwsState *)(intptr_t)ptr;
+
+    const char *c_kw = (*env)->GetStringUTFChars(env, keywords, NULL);
+    if (!c_kw) {
+        LOGE("KWS: Failed to get keywords string");
+        return 0;
+    }
+
+    const SherpaOnnxOnlineStream *stream =
+        SherpaOnnxCreateKeywordStreamWithKeywords(state->spotter, c_kw);
+
+    (*env)->ReleaseStringUTFChars(env, keywords, c_kw);
+
+    if (!stream) {
+        LOGE("KWS: Failed to create keyword stream");
+        return 0;
+    }
+    LOGI("KWS: Stream created with keywords");
+    return (jlong)(intptr_t)stream;
+}
+
+// ── KWS: Destroy Stream ────────────────────────────────────────────────────
+
+JNIEXPORT void JNICALL
+Java_com_rd_siri_audio_WakeWordEngine_nativeDestroyStream(
+    JNIEnv *env, jclass clazz, jlong streamPtr) {
+
+    if (streamPtr == 0) return;
+    SherpaOnnxDestroyOnlineStream((const SherpaOnnxOnlineStream *)(intptr_t)streamPtr);
+}
+
+// ── KWS: Accept Waveform ───────────────────────────────────────────────────
+
+JNIEXPORT void JNICALL
+Java_com_rd_siri_audio_WakeWordEngine_nativeAcceptWaveform(
+    JNIEnv *env, jclass clazz, jlong streamPtr, jfloatArray samples, jint sampleRate) {
+
+    if (streamPtr == 0) return;
+    const SherpaOnnxOnlineStream *stream = (const SherpaOnnxOnlineStream *)(intptr_t)streamPtr;
+
+    jsize n = (*env)->GetArrayLength(env, samples);
+    if (n <= 0) return;
+
+    jfloat *c_samples = (*env)->GetFloatArrayElements(env, samples, NULL);
+    if (!c_samples) return;
+
+    SherpaOnnxOnlineStreamAcceptWaveform(stream, (int32_t)sampleRate, c_samples, (int32_t)n);
+
+    (*env)->ReleaseFloatArrayElements(env, samples, c_samples, JNI_ABORT);
+}
+
+// ── KWS: Is Stream Ready ───────────────────────────────────────────────────
+
+JNIEXPORT jboolean JNICALL
+Java_com_rd_siri_audio_WakeWordEngine_nativeIsStreamReady(
+    JNIEnv *env, jclass clazz, jlong ptr, jlong streamPtr) {
+
+    if (ptr == 0 || streamPtr == 0) return JNI_FALSE;
+    KwsState *state = (KwsState *)(intptr_t)ptr;
+    const SherpaOnnxOnlineStream *stream = (const SherpaOnnxOnlineStream *)(intptr_t)streamPtr;
+    return SherpaOnnxIsKeywordStreamReady(state->spotter, stream) ? JNI_TRUE : JNI_FALSE;
+}
+
+// ── KWS: Decode Stream ─────────────────────────────────────────────────────
+
+JNIEXPORT void JNICALL
+Java_com_rd_siri_audio_WakeWordEngine_nativeDecodeStream(
+    JNIEnv *env, jclass clazz, jlong ptr, jlong streamPtr) {
+
+    if (ptr == 0 || streamPtr == 0) return;
+    KwsState *state = (KwsState *)(intptr_t)ptr;
+    const SherpaOnnxOnlineStream *stream = (const SherpaOnnxOnlineStream *)(intptr_t)streamPtr;
+    SherpaOnnxDecodeKeywordStream(state->spotter, stream);
+}
+
+// ── KWS: Get Result ────────────────────────────────────────────────────────
+
+JNIEXPORT jstring JNICALL
+Java_com_rd_siri_audio_WakeWordEngine_nativeGetResult(
+    JNIEnv *env, jclass clazz, jlong ptr, jlong streamPtr) {
+
+    if (ptr == 0 || streamPtr == 0) return (*env)->NewStringUTF(env, "");
+    KwsState *state = (KwsState *)(intptr_t)ptr;
+    const SherpaOnnxOnlineStream *stream = (const SherpaOnnxOnlineStream *)(intptr_t)streamPtr;
+
+    const SherpaOnnxKeywordResult *result = SherpaOnnxGetKeywordResult(state->spotter, stream);
+    if (!result) return (*env)->NewStringUTF(env, "");
+
+    jstring j_keyword = (*env)->NewStringUTF(env,
+        (result->keyword && result->keyword[0]) ? result->keyword : "");
+    SherpaOnnxDestroyKeywordResult(result);
+    return j_keyword;
+}
+
+// ── KWS: Reset Stream ──────────────────────────────────────────────────────
+
+JNIEXPORT void JNICALL
+Java_com_rd_siri_audio_WakeWordEngine_nativeResetStream(
+    JNIEnv *env, jclass clazz, jlong ptr, jlong streamPtr) {
+
+    if (ptr == 0 || streamPtr == 0) return;
+    KwsState *state = (KwsState *)(intptr_t)ptr;
+    const SherpaOnnxOnlineStream *stream = (const SherpaOnnxOnlineStream *)(intptr_t)streamPtr;
+    SherpaOnnxResetKeywordStream(state->spotter, stream);
+}

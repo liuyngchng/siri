@@ -8,7 +8,9 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VoiceOverOff
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -27,7 +29,9 @@ import java.util.Locale
 fun SettingsHubScreen(
     onNavigateToLlmConfig: () -> Unit,
     onNavigateToModelSetup: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    wakeWordEnabled: Boolean = false,
+    onToggleWakeWord: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     val appVersion = remember {
@@ -84,6 +88,44 @@ fun SettingsHubScreen(
                     subtitle = "ASR、TTS、Vocoder 模型管理",
                     onClick = onNavigateToModelSetup
                 )
+            }
+
+            // Section: 交互
+            item(key = "header_interaction") {
+                SectionHeader("交互")
+            }
+            item(key = "wake_word") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        if (wakeWordEnabled) Icons.Filled.RecordVoiceOver
+                        else Icons.Filled.VoiceOverOff,
+                        contentDescription = null,
+                        tint = if (wakeWordEnabled) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "语音唤醒",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            "说\"小爱小爱\"即可唤醒",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = wakeWordEnabled,
+                        onCheckedChange = onToggleWakeWord
+                    )
+                }
             }
 
             // Section: 关于

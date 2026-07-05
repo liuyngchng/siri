@@ -44,7 +44,6 @@ fun SettingsScreen(
     var apiUrl by remember { mutableStateOf(config?.apiUrl ?: "") }
     var model by remember { mutableStateOf(config?.model ?: "") }
     var apiKey by remember { mutableStateOf(config?.apiKey ?: "") }
-    var enableSearch by remember { mutableStateOf(config?.enableSearch ?: true) }
     var searchParamName by remember { mutableStateOf(config?.searchParamName ?: "enable_search") }
     var showKey by remember { mutableStateOf(false) }
     // Load saved config on first composition
@@ -53,7 +52,6 @@ fun SettingsScreen(
             apiUrl = it.apiUrl
             model = it.model
             apiKey = it.apiKey
-            enableSearch = it.enableSearch
             searchParamName = it.searchParamName
         }
     }
@@ -122,31 +120,6 @@ fun SettingsScreen(
                 }
             )
 
-            // Enable search toggle
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("启用联网搜索", style = MaterialTheme.typography.bodyLarge)
-                Switch(
-                    checked = enableSearch,
-                    onCheckedChange = { enableSearch = it; viewModel.resetTestResult() }
-                )
-            }
-
-            // Search parameter name (only shown when search is enabled)
-            if (enableSearch) {
-                OutlinedTextField(
-                    value = searchParamName,
-                    onValueChange = { searchParamName = it; viewModel.resetTestResult() },
-                    label = { Text("搜索参数名") },
-                    placeholder = { Text("enable_search") },
-                    supportingText = { Text("不同厂商参数名不同：百炼用 enable_search，留空则禁用") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-            }
-
             // Quick presets
             Text("快捷预设", style = MaterialTheme.typography.titleSmall)
             LazyRow(
@@ -212,7 +185,7 @@ fun SettingsScreen(
                 ) { Text("测试连接") }
 
                 Button(
-                    onClick = { viewModel.saveConfig(apiUrl, model, apiKey, enableSearch, searchParamName) },
+                    onClick = { viewModel.saveConfig(apiUrl, model, apiKey, true, searchParamName) },
                     modifier = Modifier.weight(1f)
                 ) { Text("保存") }
             }

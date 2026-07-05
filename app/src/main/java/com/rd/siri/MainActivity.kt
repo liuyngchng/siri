@@ -12,7 +12,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModelProvider
 import com.rd.siri.config.ConfigViewModel
-import com.rd.siri.model.ModelManager
 import com.rd.siri.ui.MainScreen
 import com.rd.siri.ui.MainViewModel
 import com.rd.siri.ui.ModelSetupScreen
@@ -46,30 +45,24 @@ class MainActivity : ComponentActivity() {
             SiriTheme {
                 var showSettings by remember { mutableStateOf(false) }
                 var settingsSubScreen by remember { mutableStateOf<SettingsSubScreen?>(null) }
-                var modelsReady by remember {
-                    mutableStateOf(ModelManager.checkAllReady(this@MainActivity))
-                }
                 val config by configViewModel.config.collectAsState()
-                var setupComplete by remember { mutableStateOf(config != null) }
+                val appState by mainViewModel.state.collectAsState()
 
-                if (!modelsReady) {
-                    // First-run wizard step 1: download voice models
-                    ModelSetupScreen(
-                        onReady = { modelsReady = true }
-                    )
-                } else if (!setupComplete) {
-                    // First-run wizard step 2: configure LLM API
-                    SettingsScreen(
-                        viewModel = configViewModel,
-                        onBack = { setupComplete = true }
-                    )
-                } else if (showSettings) {
-                    // Post-setup: settings hub with sub-navigation
+                val setupReady = appState.enginesReady && config != null
+
+                if (showSettings) {
                     when (settingsSubScreen) {
                         null -> SettingsHubScreen(
                             onNavigateToLlmConfig = { settingsSubScreen = SettingsSubScreen.LLM_CONFIG },
                             onNavigateToModelSetup = { settingsSubScreen = SettingsSubScreen.MODEL_SETUP },
-                            onDismiss = { showSettings = false }
+                            onDismiss = {
+                                showSettings = false
+                                mainViewModel.checkConfig()
+                            },
+                            wakeWordEnabled = appState.wakeWordEnabled,
+                            onToggleWakeWord = { enable ->
+                                mainViewModel.toggleWakeWord(enable)
+                            }
                         )
                         SettingsSubScreen.LLM_CONFIG -> SettingsScreen(
                             viewModel = configViewModel,
@@ -82,6 +75,7 @@ class MainActivity : ComponentActivity() {
                 } else {
                     MainScreen(
                         viewModel = mainViewModel,
+                        setupReady = setupReady,
                         onNavigateToSettings = {
                             showSettings = true
                             settingsSubScreen = null

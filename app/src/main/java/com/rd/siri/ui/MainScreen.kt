@@ -63,6 +63,7 @@ private val DifferentSenderSpacing = 12.dp
 @Composable
 fun MainScreen(
     viewModel: MainViewModel,
+    setupReady: Boolean,
     onNavigateToSettings: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
@@ -101,7 +102,18 @@ fun MainScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("语音助手") },
+                title = {
+                    Column {
+                        Text("语音助手")
+                        if (state.wakeWordEnabled) {
+                            Text(
+                                "语音唤醒中",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                },
                 actions = {
                     if (messages.isNotEmpty()) {
                         IconButton(onClick = { showClearDialog = true }) {
@@ -120,6 +132,49 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            // Setup hint banner: only shown after loading completes and something is missing
+            val showSetupHint = !setupReady && state.voiceState !is VoiceState.Loading
+            if (showSetupHint) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    tonalElevation = 0.dp
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            "请在设置中对app进行配置",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                        FilledTonalButton(
+                            onClick = onNavigateToSettings,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.Settings,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text("设置", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+            }
+
             if (messages.isEmpty()) {
                 // Empty state — centered
                 StatusCenter(
