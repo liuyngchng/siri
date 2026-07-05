@@ -4,9 +4,11 @@ import android.content.Context
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.os.Process
 import android.util.Log
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.sqrt
 
 class WakeWordEngine(private val context: Context) {
 
@@ -15,7 +17,20 @@ class WakeWordEngine(private val context: Context) {
         const val SAMPLE_RATE = 16000
         private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO
         private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
-        private const val BUFFER_SIZE_FACTOR = 4
+
+        // Reduced from 4 to 2: 2 × minBufSize (~640 samples at 16kHz) ≈ 1280 samples = 80ms.
+        // Keeps detection latency low without risking buffer underruns.
+        private const val BUFFER_SIZE_FACTOR = 2
+
+        // RMS energy below this threshold is treated as silence.
+        // 0.0008 = ~-62 dBFS — very conservative, catches fricative consonants
+        // (e.g. "x" in "小") while filtering true silence / idle noise.
+        private const val ENERGY_THRESHOLD = 0.0008f
+
+        // Once speech energy is detected, keep feeding audio for this many
+        // additional buffers even if energy drops. Covers low-energy phonemes
+        // within a word (fricatives, stops). 6 × ~80ms buffer ≈ 480ms hangover.
+        private const val ENERGY_HANGOVER_BUFFERS = 6
     }
 
     @Volatile
@@ -36,7 +51,6 @@ class WakeWordEngine(private val context: Context) {
             return true
         }
 
-        // Load keywords from assets
         keywordsContent = try {
             context.assets.open("kws_keywords.txt").bufferedReader().use { it.readText().trim() }
         } catch (e: Exception) {
@@ -57,9 +71,14 @@ class WakeWordEngine(private val context: Context) {
 
     /**
      * Start continuous wake word detection on a background thread.
-     * [onDetected] is called from the detection thread when a wake word is detected.
+     * [onDetected] is called when a wake word is detected.
+     * [onError] is called when the detection loop exits abnormally (e.g. JNI crash),
+     * so the caller can attempt recovery.
      */
-    fun start(onDetected: (keyword: String) -> Unit) {
+    fun start(
+        onDetected: (keyword: String) -> Unit,
+        onError: ((message: String) -> Unit)? = null
+    ) {
         if (spotterPtr == 0L) {
             Log.e(TAG, "WakeWordEngine: not initialized")
             return
@@ -69,11 +88,11 @@ class WakeWordEngine(private val context: Context) {
             return
         }
 
-        detectionThread = Thread {
-            runDetectionLoop(onDetected)
-        }.apply {
+        detectionThread = Thread({
+            android.os.Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
+            runDetectionLoop(onDetected, onError)
+        }).apply {
             name = "WakeWordDetection"
-            priority = Thread.NORM_PRIORITY
             start()
         }
     }
@@ -81,7 +100,11 @@ class WakeWordEngine(private val context: Context) {
     fun stop() {
         isRunning.set(false)
         audioRecord?.stop()
-        detectionThread?.join(1000)
+        // Don't join the detection thread if called from within it
+        val thread = detectionThread
+        if (thread != null && thread.id != Thread.currentThread().id) {
+            thread.join(1000)
+        }
         detectionThread = null
     }
 
@@ -96,11 +119,15 @@ class WakeWordEngine(private val context: Context) {
 
     // ── Detection loop ───────────────────────────────────────────────────────
 
-    private fun runDetectionLoop(onDetected: (String) -> Unit) {
+    private fun runDetectionLoop(
+        onDetected: (String) -> Unit,
+        onError: ((String) -> Unit)?
+    ) {
         val streamPtr = nativeCreateStream(spotterPtr)
         if (streamPtr == 0L) {
             Log.e(TAG, "WakeWordEngine: failed to create keyword stream")
             isRunning.set(false)
+            onError?.invoke("Failed to create keyword stream")
             return
         }
 
@@ -119,6 +146,7 @@ class WakeWordEngine(private val context: Context) {
             recorder.release()
             nativeDestroyStream(streamPtr)
             isRunning.set(false)
+            onError?.invoke("AudioRecord init failed")
             Log.e(TAG, "WakeWordEngine: AudioRecord init failed")
             return
         }
@@ -131,6 +159,7 @@ class WakeWordEngine(private val context: Context) {
 
             val shortBuf = ShortArray(bufferSize / 2)
             val floatBuf = FloatArray(bufferSize / 2)
+            var hangover = 0
 
             while (isRunning.get()) {
                 val n = recorder.read(shortBuf, 0, shortBuf.size)
@@ -140,7 +169,17 @@ class WakeWordEngine(private val context: Context) {
                     floatBuf[i] = shortBuf[i].toFloat() / Short.MAX_VALUE.toFloat()
                 }
 
-                val samples = if (n == floatBuf.size) floatBuf else floatBuf.copyOf(n)
+                val samples = floatBuf.copyOf(n)
+                val energy = rms(samples, n)
+
+                if (energy >= ENERGY_THRESHOLD) {
+                    hangover = ENERGY_HANGOVER_BUFFERS
+                } else if (hangover > 0) {
+                    hangover--
+                } else {
+                    continue
+                }
+
                 nativeAcceptWaveform(streamPtr, samples, SAMPLE_RATE)
 
                 while (nativeIsStreamReady(spotterPtr, streamPtr)) {
@@ -159,6 +198,7 @@ class WakeWordEngine(private val context: Context) {
             }
         } catch (e: Exception) {
             Log.e(TAG, "WakeWordEngine: detection error", e)
+            onError?.invoke("Detection loop error: ${e.message}")
         } finally {
             try { recorder.stop() } catch (_: IllegalStateException) {}
             recorder.release()
@@ -167,6 +207,14 @@ class WakeWordEngine(private val context: Context) {
             isRunning.set(false)
             Log.i(TAG, "WakeWordEngine: detection loop stopped")
         }
+    }
+
+    private fun rms(samples: FloatArray, n: Int): Float {
+        var sum = 0.0
+        for (i in 0 until n) {
+            sum += samples[i].toDouble() * samples[i]
+        }
+        return sqrt(sum / n).toFloat()
     }
 
     // ── Native methods ──────────────────────────────────────────────────────

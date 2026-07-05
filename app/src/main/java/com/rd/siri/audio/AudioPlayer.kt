@@ -4,8 +4,9 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
 
 class AudioPlayer {
 
@@ -18,8 +19,7 @@ class AudioPlayer {
     private var isPlaying = false
 
     /**
-     * Play PCM float audio. Creates a fresh AudioTrack per sentence — no buffer
-     * reuse, so stale data from a previous sentence can never leak into playback.
+     * Play PCM float audio. Creates a fresh AudioTrack per sentence.
      */
     suspend fun play(pcmFloats: FloatArray, sampleRate: Int = 22050) = withContext(Dispatchers.IO) {
         val shortSamples = ShortArray(pcmFloats.size) { i ->
@@ -57,9 +57,7 @@ class AudioPlayer {
         try {
             track.write(shortSamples, 0, shortSamples.size)
             track.play()
-
-            val durationMs = (shortSamples.size.toLong() * 1000) / sampleRate
-            awaitPlaybackComplete(track, durationMs)
+            awaitPlaybackComplete(track, shortSamples.size, sampleRate)
         } finally {
             isPlaying = false
             activeTrack = null
@@ -68,27 +66,49 @@ class AudioPlayer {
     }
 
     /**
-     * Wait for playback to complete, polling playState with short intervals.
+     * Wait for playback to complete using [AudioTrack.setPlaybackPositionUpdateListener].
+     * Falls back to a duration-based timeout if the listener doesn't fire.
      */
-    private suspend fun awaitPlaybackComplete(track: AudioTrack, durationMs: Long) {
-        val deadline = durationMs + 500
-        var elapsed = 0L
-        while (elapsed < deadline) {
-            if (track.playState != AudioTrack.PLAYSTATE_PLAYING) {
-                return
+    private suspend fun awaitPlaybackComplete(
+        track: AudioTrack,
+        frameCount: Int,
+        sampleRate: Int
+    ) = suspendCancellableCoroutine<Unit> { cont ->
+        val durationMs = (frameCount.toLong() * 1000) / sampleRate
+        val timeoutMs = durationMs + 1000
+
+        track.setPlaybackPositionUpdateListener(
+            object : AudioTrack.OnPlaybackPositionUpdateListener {
+                override fun onMarkerReached(track: AudioTrack) {
+                    if (cont.isActive) cont.resume(Unit)
+                }
+
+                override fun onPeriodicNotification(track: AudioTrack) {}
             }
-            val sleepMs = minOf(50L, deadline - elapsed).coerceAtLeast(10L)
-            delay(sleepMs)
-            elapsed += sleepMs
-        }
-        if (track.playState == AudioTrack.PLAYSTATE_PLAYING) {
-            track.stop()
+        )
+
+        // Set marker at end of audio data
+        track.notificationMarkerPosition = frameCount
+
+        // Timeout guard: if the listener doesn't fire, resume after expected duration + 1s
+        Thread({
+            Thread.sleep(timeoutMs)
+            if (cont.isActive) {
+                try { track.stop() } catch (_: Exception) {}
+                cont.resume(Unit)
+            }
+        }, "AudioPlayTimeout").start()
+
+        cont.invokeOnCancellation {
+            track.setPlaybackPositionUpdateListener(null)
+            try { track.stop() } catch (_: Exception) {}
         }
     }
 
     fun stop() {
         isPlaying = false
         activeTrack?.apply {
+            setPlaybackPositionUpdateListener(null)
             if (playState == AudioTrack.PLAYSTATE_PLAYING) {
                 stop()
             }
@@ -97,7 +117,10 @@ class AudioPlayer {
 
     fun release() {
         isPlaying = false
-        activeTrack?.release()
+        activeTrack?.apply {
+            setPlaybackPositionUpdateListener(null)
+            release()
+        }
         activeTrack = null
     }
 }

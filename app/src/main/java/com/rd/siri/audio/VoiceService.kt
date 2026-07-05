@@ -19,6 +19,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -32,13 +33,16 @@ class VoiceService : Service() {
         const val ACTION_START = "com.rd.siri.action.START_WAKE"
         const val ACTION_STOP = "com.rd.siri.action.STOP_WAKE"
 
-        private const val DEBOUNCE_MS = 5000L
+        // Max retries for KWS engine recovery after crash
+        private const val MAX_RECOVERY_ATTEMPTS = 3
+        private const val RECOVERY_DELAY_MS = 2000L
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val engine = WakeWordEngine(this)
     private var lastWakeTime = 0L
-    private var kwsActive = false  // true when engine is actively detecting
+    private var kwsActive = false
+    private var recoveryAttempts = 0
 
     override fun onCreate() {
         super.onCreate()
@@ -79,17 +83,15 @@ class VoiceService : Service() {
         Log.i(TAG, "VoiceService: destroyed")
     }
 
-    // ── Top-level start/stop (external control) ─────────────────────────────
+    // ── Top-level start/stop ────────────────────────────────────────────────
 
     private fun startWakeDetection() {
-        // MUST call startForeground() within ~5s — show notification immediately
         showForegroundNotification()
         WakeWordManager.setRunning(true)
 
         if (engine.isReady) {
             startEngine()
         } else {
-            // Model init is slow (~7s), do it on a background thread
             Thread({
                 if (!ensureInitializedSync()) {
                     stopSelf()
@@ -108,7 +110,7 @@ class VoiceService : Service() {
         Log.i(TAG, "VoiceService: wake detection stopped")
     }
 
-    // ── Engine control (pause/resume — keep notification alive while paused) ──
+    // ── Engine control ──────────────────────────────────────────────────────
 
     private fun startEngine() {
         if (kwsActive) {
@@ -116,19 +118,27 @@ class VoiceService : Service() {
             return
         }
         kwsActive = true
-        engine.start { keyword ->
-            val now = System.currentTimeMillis()
-            if (now - lastWakeTime < DEBOUNCE_MS) {
-                Log.d(TAG, "VoiceService: wake word debounced (${now - lastWakeTime}ms)")
-                return@start
-            }
-            lastWakeTime = now
-            Log.i(TAG, "VoiceService: wake word '$keyword' detected — pausing KWS")
+        engine.start(
+            onDetected = { keyword ->
+                val now = System.currentTimeMillis()
+                val debounce = WakeWordManager.currentDebounceMs
+                if (now - lastWakeTime < debounce) {
+                    Log.d(TAG, "VoiceService: wake word debounced (${now - lastWakeTime}ms < ${debounce}ms)")
+                    return@start
+                }
+                lastWakeTime = now
+                Log.i(TAG, "VoiceService: wake word '$keyword' detected — pausing KWS, debounce=${debounce}ms")
 
-            // Release the microphone before emitting the event so ASR can use it
-            stopEngine()
-            WakeWordManager.notifyWakeWord()
-        }
+                stopEngine()
+                WakeWordManager.notifyWakeWord()
+            },
+            onError = { message ->
+                Log.e(TAG, "VoiceService: KWS engine error: $message")
+                kwsActive = false
+                attemptRecovery()
+            }
+        )
+        recoveryAttempts = 0  // reset on successful start
         Log.i(TAG, "VoiceService: engine started")
     }
 
@@ -138,7 +148,32 @@ class VoiceService : Service() {
         Log.i(TAG, "VoiceService: engine stopped")
     }
 
-    // ── Initialization (runs on background thread, returns success) ────────
+    // ── Crash recovery ──────────────────────────────────────────────────────
+
+    private fun attemptRecovery() {
+        if (recoveryAttempts >= MAX_RECOVERY_ATTEMPTS) {
+            Log.e(TAG, "VoiceService: max recovery attempts reached, giving up")
+            return
+        }
+        recoveryAttempts++
+
+        Thread({
+            Log.i(TAG, "VoiceService: recovery attempt $recoveryAttempts/$MAX_RECOVERY_ATTEMPTS, waiting ${RECOVERY_DELAY_MS}ms")
+            Thread.sleep(RECOVERY_DELAY_MS)
+
+            // Re-initialize engine
+            engine.destroy()
+            if (ensureInitializedSync()) {
+                startEngine()
+                Log.i(TAG, "VoiceService: recovery successful")
+            } else {
+                Log.e(TAG, "VoiceService: recovery failed, engine init error")
+                attemptRecovery()
+            }
+        }, "KwsRecovery").start()
+    }
+
+    // ── Initialization ──────────────────────────────────────────────────────
 
     private fun ensureInitializedSync(): Boolean {
         if (engine.isReady) return true
@@ -156,7 +191,7 @@ class VoiceService : Service() {
         return true
     }
 
-    // ── Notification ─────────────────────────────────────────────────────────
+    // ── Notification ────────────────────────────────────────────────────────
 
     private fun showForegroundNotification() {
         val pendingIntent = PendingIntent.getActivity(

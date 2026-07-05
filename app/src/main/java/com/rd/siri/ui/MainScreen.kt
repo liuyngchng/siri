@@ -626,6 +626,7 @@ private fun MicButton(
                                 awaitFirstDown(requireUnconsumed = false)
                                 val downTime = System.currentTimeMillis()
                                 val state = currentVoiceState
+                                val wasIdleWhenPressed = state is VoiceState.Idle
 
                                 // Tap to cancel processing/speaking
                                 if (state is VoiceState.Recognizing || state is VoiceState.Thinking) {
@@ -647,7 +648,7 @@ private fun MicButton(
                                 waitForUpOrCancellation()
                                 if (currentVoiceState is VoiceState.Listening) {
                                     val duration = System.currentTimeMillis() - downTime
-                                    if (duration < 300) {
+                                    if (duration < 300 && wasIdleWhenPressed) {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         currentOnPressCancel()
                                     } else {

@@ -29,9 +29,42 @@ object WakeWordManager {
     private val _resumeSignal = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val resumeSignal: SharedFlow<Unit> = _resumeSignal.asSharedFlow()
 
+    // ── Adaptive debounce state ────────────────────────────────────────────
+
+    private const val BASE_DEBOUNCE_MS = 5000L
+    private const val MAX_DEBOUNCE_MS = 120_000L
+    private var consecutiveFalseTriggers = 0
+
+    /** Current debounce window based on recent false-trigger history. */
+    val currentDebounceMs: Long
+        get() {
+            if (consecutiveFalseTriggers == 0) return BASE_DEBOUNCE_MS
+            val doubled = BASE_DEBOUNCE_MS * (1L shl consecutiveFalseTriggers)
+            return doubled.coerceAtMost(MAX_DEBOUNCE_MS)
+        }
+
     /** Called by VoiceService when the wake word is detected. */
     fun notifyWakeWord() {
         _wakeEvents.tryEmit(Unit)
+    }
+
+    /**
+     * Called by MainViewModel after a wake-word-triggered voice session
+     * completes successfully (ASR produced meaningful text).
+     * Resets the adaptive debounce counter.
+     */
+    fun notifyProductiveWake() {
+        if (consecutiveFalseTriggers > 0) {
+            consecutiveFalseTriggers = 0
+        }
+    }
+
+    /**
+     * Called by MainViewModel when a wake-word-triggered session produced
+     * no meaningful speech (false trigger). Increases the debounce window.
+     */
+    fun notifyFalseTrigger() {
+        consecutiveFalseTriggers++
     }
 
     /** Called by MainViewModel when the voice flow (ASR→LLM→TTS) has completed. */

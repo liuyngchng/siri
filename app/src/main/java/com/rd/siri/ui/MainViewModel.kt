@@ -33,6 +33,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.sqrt
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -60,6 +62,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var wakeWordTriggered = false
     private var multiTurnActive = false
 
+    // Latest audio RMS energy, updated by the recording coroutine.
+    // Used by the multi-turn VAD for speech/silence detection.
+    private val latestRms = AtomicReference(0f)
+    private var sampleCounter = 0L
+
     init {
         Log.i(TAG, "MainViewModel init start")
 
@@ -71,12 +78,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         // When voice flow completes after a wake-word trigger, resume KWS.
-        // In multi-turn mode, only resume when the session fully ends (multiTurnActive becomes false).
         viewModelScope.launch {
             _state.collect { s ->
                 if (wakeWordTriggered && s.voiceState is VoiceState.Idle && !multiTurnActive) {
-                    wakeWordTriggered = false
                     Log.i(TAG, "Wake-word voice flow complete, signaling resume")
+                    wakeWordTriggered = false
                     WakeWordManager.notifyVoiceFlowDone()
                 }
             }
@@ -90,7 +96,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     wakeWordTriggered = true
                     multiTurnActive = true
                     launch(Dispatchers.IO) {
-                        // Play acknowledgment to let user know the app is activated
                         _state.update { it.copy(voiceState = VoiceState.Speaking) }
                         val pcm = ttsEngine.synthesize("哎，我在呢", sid = 0)
                         if (pcm != null) {
@@ -162,9 +167,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return hasConfig
     }
 
-    /**
-     * Start listening: begin audio recording and streaming to ASR.
-     */
     fun startListening() {
         if (!asrEngine.isReady) {
             _state.update { it.copy(voiceState = VoiceState.Error("模型未就绪，请先上传模型文件")) }
@@ -175,11 +177,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        // Stop any ongoing TTS playback before recording
         stopSpeaking()
 
         Log.i(TAG, "startListening: begin recording")
         _state.update { it.copy(voiceState = VoiceState.Listening, partialAsrText = "", finalAsrText = "") }
+
+        // Reset energy tracker for VAD
+        latestRms.set(0f)
+        sampleCounter = 0L
 
         recordingJob = viewModelScope.launch {
             audioRecorder.startRecording()
@@ -190,9 +195,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 .collect { samples ->
                     asrEngine.acceptWaveform(samples)
                     val partial = asrEngine.getPendingText()
+                    val energy = rms(samples)
                     if (partial.isNotBlank()) {
                         Log.d(TAG, "startListening: partial ASR text='$partial'")
                     }
+                    // Log energy periodically to diagnose audio capture issues
+                    if (sampleCounter++ % 20 == 0L) {
+                        Log.d(TAG, "startListening: audio energy rms=$energy, partial='${partial.take(20)}'")
+                    }
+                    // Track audio energy for VAD
+                    latestRms.set(energy)
                     _state.update { it.copy(partialAsrText = partial) }
                 }
         }
@@ -201,35 +213,59 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (multiTurnActive) {
             vadJob?.cancel()
             vadJob = viewModelScope.launch {
-                val maxPeakWaitMs = 10000L      // wait up to 10s for speech to start
-                val silenceThresholdMs = 1500L   // 1.5s silence after speech → stop
-                val energyThreshold = 0.02f      // RMS energy above this = speaking
+                val maxPeakWaitMs = 10000L
+                val silenceThresholdMs = 1500L
+                val energyThreshold = 0.005f
 
                 var speechDetected = false
                 var silenceStartMs: Long? = null
+                var energyHighCount = 0
+                val energyHighNeeded = 3  // require 600ms of sustained energy
                 val startMs = System.currentTimeMillis()
 
+                var vadLogCounter = 0
                 while (true) {
                     delay(200)
                     val s = _state.value
                     if (s.voiceState !is VoiceState.Listening) break
 
-                    // Estimate energy from partial ASR activity + recent audio
+                    val rms = latestRms.get()
                     val hasPartial = s.partialAsrText.isNotBlank()
 
+                    // Periodic VAD status log
+                    if (vadLogCounter++ % 10 == 0) {
+                        Log.d(TAG, "VAD check: rms=$rms hasPartial=$hasPartial speechDetected=$speechDetected energyHighCount=$energyHighCount")
+                    }
+
+                    // Speech detection: ASR partial text is definitive.
+                    // Energy alone requires sustained signal to filter out transient noise.
                     if (hasPartial) {
                         speechDetected = true
                         silenceStartMs = null
-                    } else if (speechDetected) {
+                        energyHighCount = 0
+                    } else if (!speechDetected && rms > energyThreshold) {
+                        energyHighCount++
+                        if (energyHighCount >= energyHighNeeded) {
+                            speechDetected = true
+                        }
+                    } else if (!speechDetected) {
+                        energyHighCount = 0
+                    }
+
+                    // Silence after speech detected
+                    if (speechDetected && rms <= energyThreshold && !hasPartial) {
                         if (silenceStartMs == null) {
                             silenceStartMs = System.currentTimeMillis()
-                        } else if (System.currentTimeMillis() - silenceStartMs!! >= silenceThresholdMs) {
+                        } else if (System.currentTimeMillis() - silenceStartMs >= silenceThresholdMs) {
                             Log.i(TAG, "VAD: silence for ${silenceThresholdMs}ms after speech, auto-stopping")
                             stopListening()
                             break
                         }
+                    } else if (speechDetected) {
+                        silenceStartMs = null
                     }
 
+                    // No speech detected at all → timeout
                     if (!speechDetected && System.currentTimeMillis() - startMs >= maxPeakWaitMs) {
                         Log.i(TAG, "VAD: no speech detected for ${maxPeakWaitMs}ms, auto-stopping")
                         stopListening()
@@ -240,9 +276,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * Stop listening, finalize ASR, and send to LLM.
-     */
     fun stopListening() {
         Log.i(TAG, "stopListening: stopping recording")
         autoStopJob?.cancel()
@@ -253,7 +286,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _state.update { it.copy(voiceState = VoiceState.Recognizing) }
 
         viewModelScope.launch(Dispatchers.IO) {
-            // Wait for recording coroutine to finish (read() unblocked by stopRecording above)
             recordingJob?.join()
             recordingJob = null
 
@@ -262,14 +294,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             Log.i(TAG, "stopListening: ASR final text='$text'")
             if (text.isBlank()) {
                 Log.w(TAG, "stopListening: ASR returned blank text, returning to idle")
+                if (wakeWordTriggered) {
+                    WakeWordManager.notifyFalseTrigger()
+                }
                 multiTurnActive = false
                 _state.update { it.copy(voiceState = VoiceState.Idle, partialAsrText = "") }
                 return@launch
             }
 
+            // Productive wake — reset adaptive debounce
+            if (wakeWordTriggered) {
+                WakeWordManager.notifyProductiveWake()
+            }
+
             _state.update { it.copy(finalAsrText = text, partialAsrText = "", voiceState = VoiceState.Thinking) }
 
-            // Check config before sending
             if (!configRepository.hasConfig) {
                 multiTurnActive = false
                 _state.update {
@@ -278,7 +317,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
 
-            // Stream LLM response with real-time TTS
             Log.i(TAG, "stopListening: sending to LLM, text='$text'")
             val result = chatSession.sendStream(text)
             result.onSuccess { flow ->
@@ -287,7 +325,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     try {
                         speakStream(flow, fullReply)
                     } catch (e: kotlinx.coroutines.CancellationException) {
-                        // normal stop
                     } catch (e: Exception) {
                         Log.e(TAG, "stopListening: stream TTS failed", e)
                     }
@@ -307,10 +344,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * Speak text via TTS. Cancel any previous speech first.
-     * Synthesizes and plays sentence by sentence so the first audio starts sooner.
-     */
     fun speakText(text: String) {
         speakingJob?.cancel()
         audioPlayer.stop()
@@ -325,7 +358,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val channel = Channel<FloatArray>(Channel.BUFFERED)
 
                 coroutineScope {
-                    // Producer: synthesize sentences
                     launch(Dispatchers.IO) {
                         for (sentence in sentences) {
                             val normalized = com.rd.siri.tts.TextNormalizer.normalize(sentence)
@@ -339,7 +371,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         channel.close()
                     }
 
-                    // Consumer: play synthesized audio
                     launch(Dispatchers.IO) {
                         for (pcm in channel) {
                             audioPlayer.play(pcm, sampleRate)
@@ -347,7 +378,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
-                // swallowed — normal stop
             } catch (e: Exception) {
                 Log.e(TAG, "speakReply: TTS failed", e)
             } finally {
@@ -356,17 +386,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * Stream LLM tokens to TTS in real time.
-     *
-     * Detects complete sentences as tokens arrive and starts TTS synthesis
-     * immediately, overlapping LLM streaming with speech synthesis and playback.
-     *
-     * Three-stage pipeline (each stage runs concurrently):
-     *   1. Token collector  → detects sentence boundaries → feeds sentenceChannel
-     *   2. Synthesizer      → reads sentenceChannel → synthesizes → feeds pcmChannel
-     *   3. Player           → reads pcmChannel → plays audio
-     */
     private suspend fun speakStream(
         textFlow: Flow<String>,
         accumulator: StringBuilder
@@ -374,12 +393,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val sampleRate = ttsEngine.getSampleRate()
         val sentenceChannel = Channel<String>(Channel.UNLIMITED)
         val pcmChannel = Channel<FloatArray>(Channel.BUFFERED)
-        var lastBoundary = 0  // index in accumulator already processed
+        var lastBoundary = 0
 
         _state.update { it.copy(voiceState = VoiceState.Speaking) }
 
         coroutineScope {
-            // Stage 2: Synthesize sentences → PCM audio
             val synthJob = launch(Dispatchers.IO) {
                 try {
                     for (sentence in sentenceChannel) {
@@ -396,14 +414,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
-            // Stage 3: Play synthesized audio
             val playerJob = launch(Dispatchers.IO) {
                 for (pcm in pcmChannel) {
                     audioPlayer.play(pcm, sampleRate)
                 }
             }
 
-            // Stage 1: Collect LLM tokens, detect complete sentences
             try {
                 textFlow.collect { token ->
                     accumulator.append(token)
@@ -428,7 +444,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             } finally {
-                // Flush any remaining text (incomplete last sentence)
                 val remaining = accumulator.toString().substring(lastBoundary).trim()
                 if (remaining.isNotBlank()) {
                     Log.i(TAG, "speakStream: flushing remaining '${remaining.take(40)}'")
@@ -437,14 +452,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 sentenceChannel.close()
             }
 
-            // Save reply to messages immediately — don't wait for TTS playback
             val reply = accumulator.toString()
             if (reply.isNotBlank()) {
                 chatSession.appendAssistantReply(reply)
             }
             _state.update { it.copy(assistantReply = reply) }
 
-            // Wait for synthesis and playback to finish
             synthJob.join()
             playerJob.join()
         }
@@ -457,13 +470,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _state.update { it.copy(voiceState = VoiceState.Idle) }
     }
 
-    /** User-initiated stop during TTS playback — exits multi-turn mode and resumes KWS. */
     fun finishSpeaking() {
+        Log.i(TAG, "finishSpeaking called, multiTurnActive=$multiTurnActive")
         multiTurnActive = false
         stopSpeaking()
     }
 
     fun cancelListening() {
+        Log.i(TAG, "cancelListening called, wakeWordTriggered=$wakeWordTriggered")
+        if (wakeWordTriggered) {
+            WakeWordManager.notifyFalseTrigger()
+        }
         multiTurnActive = false
         autoStopJob?.cancel()
         vadJob?.cancel()
@@ -491,5 +508,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         recordingJob?.cancel()
         streamingJob?.cancel()
         speakingJob?.cancel()
+    }
+
+    private fun rms(samples: FloatArray): Float {
+        var sum = 0.0
+        for (s in samples) {
+            sum += s.toDouble() * s
+        }
+        return sqrt(sum / samples.size).toFloat()
     }
 }
