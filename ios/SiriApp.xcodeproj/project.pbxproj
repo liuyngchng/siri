@@ -40,6 +40,7 @@
 		DE7BF72202BA4D86A35CA2E2 /* ChatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A235D6C3C94424A95A40247 /* ChatMessage.swift */; };
 		E41EC46E95B34D5483E19B7E /* PulseRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2B41C65292243559B4B4427 /* PulseRing.swift */; };
 		E7B90FFFBDD34688A28DA1E3 /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD7E3C8DE001425E844B70D5 /* SettingsScreen.swift */; };
+		HUBSCR33N0000000000000001 /* SettingsHubScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = HUBSCR33N0000000000000002 /* SettingsHubScreen.swift */; };
 		F908660C16CEF2E1462DE5DE /* sherpa-onnx.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9B101175DE356BE3422C84DA /* sherpa-onnx.xcframework */; };
 		FF6340AEEB634F4ABBADBE4B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A423D23B65B45D08FE433E3 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
@@ -77,6 +78,7 @@
 		D4EAB841A334476DA8B7B0E9 /* ConfigViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigViewModel.swift; sourceTree = "<group>"; };
 		D74FD10E5EEA479584867D9C /* AudioSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionManager.swift; sourceTree = "<group>"; };
 		DD7E3C8DE001425E844B70D5 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
+		HUBSCR33N0000000000000002 /* SettingsHubScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsHubScreen.swift; sourceTree = "<group>"; };
 		E255AA2535AD4E5EA89AFFFA /* LlmClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LlmClient.swift; sourceTree = "<group>"; };
 		E2B41C65292243559B4B4427 /* PulseRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseRing.swift; sourceTree = "<group>"; };
 		FE4DD627403C4F4EBD2C1DB6 /* SherpaTtsEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SherpaTtsEngine.swift; sourceTree = "<group>"; };
@@ -215,6 +217,7 @@
 			children = (
 				526A1237892D4644ACB127EC /* MainScreen.swift */,
 				DD7E3C8DE001425E844B70D5 /* SettingsScreen.swift */,
+				HUBSCR33N0000000000000002 /* SettingsHubScreen.swift */,
 				C97859028D774B4F82C91887 /* ModelSetupScreen.swift */,
 				A164B0650ED74295B46BE23B /* Components */,
 			);
@@ -339,6 +342,7 @@
 				0832BDEA9B7345CA9DCDC737 /* MainViewModel.swift in Sources */,
 				8729A560BF814BCA8635DD76 /* MainScreen.swift in Sources */,
 				E7B90FFFBDD34688A28DA1E3 /* SettingsScreen.swift in Sources */,
+				HUBSCR33N0000000000000001 /* SettingsHubScreen.swift in Sources */,
 				2DCB61B4D3A44DBB8372207D /* ModelSetupScreen.swift in Sources */,
 				948274C2A2DA43FBBDD71E9E /* MessageBubble.swift in Sources */,
 				86186CD126BD4928B4D9585B /* MicButton.swift in Sources */,

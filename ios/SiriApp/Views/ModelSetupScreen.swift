@@ -5,7 +5,9 @@
 //  First-launch screen: download or import model files.
 //  Three slots: ASR (tar), TTS (tar), Vocoder (onnx).
 //  User can tap all 3 — operations queue and run sequentially.
-//  iOS 14 native style: List + InsetGroupedListStyle
+//
+//  ModelSetupScreen   – standalone NavigationView wrapper (first-launch flow).
+//  ModelSetupContent  – the List itself; can be pushed inside another NavView.
 //
 
 import SwiftUI
@@ -28,8 +30,6 @@ private struct ModelFilePicker: UIViewControllerRepresentable {
     }
 
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        // asCopy: false — dismiss immediately and let us handle the copy in the
-        // background so large SMB files don't hang the picker with no progress.
         let picker = UIDocumentPickerViewController(forOpeningContentTypes: allowedContentTypes, asCopy: false)
         picker.delegate = context.coordinator
         picker.allowsMultipleSelection = false
@@ -57,7 +57,6 @@ private struct ModelFilePicker: UIViewControllerRepresentable {
             pickerLog.debug("Selected URL: \(url.absoluteString)")
             pickerLog.debug("Path: \(url.path), isFileURL: \(url.isFileURL)")
 
-            // Check file size
             if let attrs = try? FileManager.default.attributesOfItem(atPath: url.path) {
                 let size = (attrs[.size] as? NSNumber)?.int64Value ?? -1
                 pickerLog.info("File size: \(size) bytes (\(size / 1024 / 1024) MB)")
@@ -92,10 +91,23 @@ enum ModelSheetTarget: Identifiable {
     }
 }
 
-// MARK: - Screen
+// MARK: - Standalone wrapper (first-launch)
 
 struct ModelSetupScreen: View {
     let onReady: () -> Void
+
+    var body: some View {
+        NavigationView {
+            ModelSetupContent(onReady: onReady)
+        }
+        .navigationViewStyle(.stack)
+    }
+}
+
+// MARK: - Content (usable standalone or pushed)
+
+struct ModelSetupContent: View {
+    var onReady: (() -> Void)?
 
     @StateObject private var modelManager = ModelManager()
 
@@ -120,6 +132,14 @@ struct ModelSetupScreen: View {
     private var ttsOk: Bool { ttsTarOk && vocoderOk }
     private var allReady: Bool { asrOk && ttsOk }
 
+    @ViewBuilder
+    private var onReadyButton: some View {
+        if let onReady = onReady {
+            Button("下一步", action: onReady)
+                .disabled(!allReady || anyProcessing)
+        }
+    }
+
     private var anyProcessing: Bool {
         if case .queued = modelManager.asrState { return true }
         if case .downloading = modelManager.asrState { return true }
@@ -137,61 +157,56 @@ struct ModelSetupScreen: View {
     }
 
     var body: some View {
-        NavigationView {
-            List {
-                Section {
-                    HStack(spacing: 12) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(Color(red: 0.3, green: 0.69, blue: 0.31))
-                            .font(.title3)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("sherpa-onnx 引擎")
-                            Text("已内置于 App")
-                                .font(.caption).foregroundColor(.secondary)
-                        }
+        List {
+            Section {
+                HStack(spacing: 12) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(Color(red: 0.3, green: 0.69, blue: 0.31))
+                        .font(.title3)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("sherpa-onnx 引擎")
+                        Text("已内置于 App")
+                            .font(.caption).foregroundColor(.secondary)
                     }
-                    .padding(.vertical, 4)
                 }
-
-                Section(header: Text("ASR 模型")) {
-                    slotRow(label: "SenseVoice", subtitle: "语音识别 · int8 量化",
-                            isReady: asrOk, state: modelManager.asrState,
-                            onDownload: { modelManager.downloadAsrModel() },
-                            onImport: { sheetTarget = .asr })
-                }
-
-                Section(header: Text("TTS 模型")) {
-                    slotRow(label: "Matcha-icefall", subtitle: "语音合成 · 中文",
-                            isReady: ttsTarOk, state: modelManager.ttsState,
-                            onDownload: { modelManager.downloadTtsModel() },
-                            onImport: { sheetTarget = .tts })
-                }
-
-                Section(header: Text("Vocoder")) {
-                    slotRow(label: "Vocos", subtitle: "22kHz · ONNX 格式",
-                            isReady: vocoderOk, state: modelManager.vocoderState,
-                            onDownload: { modelManager.downloadVocoder() },
-                            onImport: { sheetTarget = .vocoder })
-                }
-
-                Section(footer: Text("模型文件较大，建议在 Wi-Fi 环境下下载。也可通过文件 App 导入已下载的模型文件。")) {
-                    EmptyView()
-                }
+                .padding(.vertical, 4)
             }
-            .listStyle(InsetGroupedListStyle())
-            .navigationTitle("模型设置")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("下一步", action: onReady)
-                        .disabled(!allReady || anyProcessing)
-                }
+
+            Section(header: Text("ASR 模型")) {
+                slotRow(label: "SenseVoice", subtitle: "语音识别 · int8 量化",
+                        isReady: asrOk, state: modelManager.asrState,
+                        onDownload: { modelManager.downloadAsrModel() },
+                        onImport: { sheetTarget = .asr })
             }
-            .sheet(item: $sheetTarget) { makeFilePicker(for: $0) }
-            .alert(isPresented: Binding<Bool>(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
-                Alert(title: Text("导入失败"), message: Text(errorMessage ?? ""), dismissButton: .default(Text("好")))
+
+            Section(header: Text("TTS 模型")) {
+                slotRow(label: "Matcha-icefall", subtitle: "语音合成 · 中文",
+                        isReady: ttsTarOk, state: modelManager.ttsState,
+                        onDownload: { modelManager.downloadTtsModel() },
+                        onImport: { sheetTarget = .tts })
+            }
+
+            Section(header: Text("Vocoder")) {
+                slotRow(label: "Vocos", subtitle: "22kHz · ONNX 格式",
+                        isReady: vocoderOk, state: modelManager.vocoderState,
+                        onDownload: { modelManager.downloadVocoder() },
+                        onImport: { sheetTarget = .vocoder })
+            }
+
+            Section(footer: Text("模型文件较大，建议在 Wi-Fi 环境下下载。也可通过文件 App 导入已下载的模型文件。")) {
+                EmptyView()
             }
         }
-        .navigationViewStyle(.stack)
+        .listStyle(InsetGroupedListStyle())
+        .navigationTitle("语音模型")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) { onReadyButton }
+        }
+        .sheet(item: $sheetTarget) { makeFilePicker(for: $0) }
+        .alert(isPresented: Binding<Bool>(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+            Alert(title: Text("导入失败"), message: Text(errorMessage ?? ""), dismissButton: .default(Text("好")))
+        }
     }
 
     // MARK: - Slot Row
@@ -283,7 +298,6 @@ struct ModelSetupScreen: View {
             }
 
         default:
-            // idle or completed-but-not-verified: show action buttons
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.orange)

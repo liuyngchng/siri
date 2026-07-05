@@ -27,9 +27,9 @@ struct ContentView: View {
                     }
                 )
             } else if contentVM.showSettings {
-                SettingsScreen(
-                    viewModel: configVM,
-                    onBack: {
+                SettingsHubScreen(
+                    configVM: configVM,
+                    onDismiss: {
                         contentVM.showSettings = false
                         contentVM.refreshState()
                         _ = mainVM.checkConfig()

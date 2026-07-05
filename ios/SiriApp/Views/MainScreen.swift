@@ -219,6 +219,7 @@ struct StatusCenter: View {
         VStack(spacing: 0) {
             Spacer()
             content
+                .frame(maxWidth: .infinity)
             Spacer()
         }
     }
