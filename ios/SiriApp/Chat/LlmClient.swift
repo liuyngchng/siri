@@ -35,15 +35,22 @@ class LlmClient {
     private var session: URLSession!
     private var sseDelegate: SSEDelegate?
 
-    private var systemPrompt: String {
+    private func systemPrompt(enableSearch: Bool) -> String {
         let df = DateFormatter()
         df.locale = Locale(identifier: "zh_CN")
         df.dateFormat = "yyyy年M月d日 EEEE"
         let now = df.string(from: Date())
-        return "你是语音助手，请用简洁的口语化中文回答，回答控制在100字以内。" +
-            "当前日期是\(now)。你的知识截止日期远早于当前日期，" +
-            "当用户问到与时间相关的问题（如赛程、天气、新闻），" +
-            "必须以当前日期为基准，结合联网搜索结果来回答。"
+        let base = "你是语音助手，请用简洁的口语化中文回答，回答控制在100字以内。" +
+            "当前日期是\(now)。"
+        if enableSearch {
+            return base +
+                "你已启用联网搜索，获取到的实时信息会直接提供给你。" +
+                "对于需要最新数据的问题（赛程、天气、新闻、股价等），务必基于搜索结果回答。" +
+                "严禁说你无法搜索或不支持联网——搜索是系统自动完成的。"
+        } else {
+            return base +
+                "如果用户问到你不了解的事，直接说不知道即可。"
+        }
     }
 
     struct LlmParams {
@@ -236,7 +243,7 @@ class LlmClient {
         var msgArray: [[String: Any]] = []
 
         // System prompt
-        msgArray.append(["role": "system", "content": systemPrompt])
+        msgArray.append(["role": "system", "content": systemPrompt(enableSearch: config.enableSearch)])
 
         // Conversation messages
         for msg in messages {
