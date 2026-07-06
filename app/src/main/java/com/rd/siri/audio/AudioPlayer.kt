@@ -90,16 +90,23 @@ class AudioPlayer {
         // Set marker at end of audio data
         track.notificationMarkerPosition = frameCount
 
-        // Timeout guard: if the listener doesn't fire, resume after expected duration + 1s
-        Thread({
-            Thread.sleep(timeoutMs)
+        // Timeout guard: if the listener doesn't fire, resume after expected duration + 1s.
+        // Daemon thread so it won't block JVM shutdown.
+        val timeoutThread = Thread({
+            try {
+                Thread.sleep(timeoutMs)
+            } catch (_: InterruptedException) {
+                return@Thread
+            }
             if (cont.isActive) {
                 try { track.stop() } catch (_: Exception) {}
                 cont.resume(Unit)
             }
-        }, "AudioPlayTimeout").start()
+        }, "AudioPlayTimeout").apply { isDaemon = true }
+        timeoutThread.start()
 
         cont.invokeOnCancellation {
+            timeoutThread.interrupt()
             track.setPlaybackPositionUpdateListener(null)
             try { track.stop() } catch (_: Exception) {}
         }

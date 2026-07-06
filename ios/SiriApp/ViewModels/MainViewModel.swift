@@ -221,23 +221,35 @@ class MainViewModel: ObservableObject {
         }
         lastWakeTime = now
 
-        os_log(.info, "MainVM: wake word '%{public}@' detected — stopping KWS", keyword)
+        os_log(.info, "MainVM: wake word '%{public}@' detected — pausing KWS engine", keyword)
 
-        // Stop KWS so mic is free for ASR
-        stopWakeWordDetection()
+        // Pause KWS engine and then start the voice flow.
+        // stop() busy-waits for the detection thread to finish, which can take
+        // up to ~100ms. Run it on a background thread so we don't block the UI,
+        // and only proceed with the voice flow AFTER the KWS engine has fully
+        // released the microphone.
+        Task.detached(priority: .userInitiated) { [weak self] in
+            guard let self = self else { return }
 
-        // Check engine readiness
-        guard state.enginesReady else {
-            os_log(.info, "MainVM: wake word detected but engines not ready — restarting KWS")
-            state.voiceState = .error("模型未就绪，请在模型管理界面下载模型")
-            // Don't penalise the user — engines not ready is not a false trigger.
-            // Don't call notifyFalseTrigger() here.
-            onResumeKws()
-            return
+            // Block the background thread (not main) while KWS winds down
+            await MainActor.run { self.wakeWordEngine.stop() }
+
+            // Now safe to start voice flow — microphone is free
+            await MainActor.run { [weak self] in
+                guard let self = self else { return }
+
+                // Check engine readiness
+                guard self.state.enginesReady else {
+                    os_log(.info, "MainVM: wake word detected but engines not ready — restarting KWS")
+                    self.state.voiceState = .error("模型未就绪，请在模型管理界面下载模型")
+                    self.onResumeKws()
+                    return
+                }
+
+                // Notify manager — starts the voice flow
+                self.wakeWordManager.notifyWakeWord()
+            }
         }
-
-        // Notify manager
-        wakeWordManager.notifyWakeWord()
     }
 
     private func onKwsError(_ message: String) {
@@ -282,6 +294,8 @@ class MainViewModel: ObservableObject {
                         cont.resume()
                     }
                 }
+                // Release player engine before starting AudioRecorder
+                self.audioPlayer.stop()
             }
 
             self.startListening()
@@ -635,6 +649,10 @@ class MainViewModel: ObservableObject {
                     cont.resume()
                 }
             }
+
+            // Stop the player engine so it doesn't compete with AudioRecorder
+            // or WakeWordEngine when the next audio operation starts.
+            self.audioPlayer.stop()
 
             self.finishSpeakingOrMultiTurn()
         }

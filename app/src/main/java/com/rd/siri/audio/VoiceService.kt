@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
@@ -40,13 +41,27 @@ class VoiceService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val engine = WakeWordEngine(this)
+    private val initLock = Any()
+    private var initializing = false
     private var lastWakeTime = 0L
     private var kwsActive = false
     private var recoveryAttempts = 0
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+
+        // Acquire partial wake lock to keep CPU running for KWS when screen is off.
+        // Without this, deep doze suspends the CPU and AudioRecord.read() never returns.
+        val pm = getSystemService(PowerManager::class.java)
+        wakeLock = pm.newWakeLock(
+            PowerManager.PARTIAL_WAKE_LOCK,
+            "SiriApp:VoiceServiceWakeLock"
+        ).apply {
+            setReferenceCounted(false)
+            acquire()
+        }
 
         // Observe resume signal: when the voice flow completes, restart KWS
         serviceScope.launch {
@@ -66,7 +81,13 @@ class VoiceService : Service() {
                 stopWakeDetection()
                 stopSelf()
             }
-            else -> Log.w(TAG, "VoiceService: unknown action=${intent?.action}")
+            null -> {
+                // Service was killed and restarted by the system (START_STICKY).
+                // No intent supplied — resume wake detection by default.
+                Log.i(TAG, "VoiceService: restarted with null intent (system restart), resuming KWS")
+                startWakeDetection()
+            }
+            else -> Log.w(TAG, "VoiceService: unknown action=${intent.action}")
         }
         return START_STICKY
     }
@@ -79,6 +100,10 @@ class VoiceService : Service() {
         engine.destroy()
         stopForeground(STOP_FOREGROUND_REMOVE)
         WakeWordManager.setRunning(false)
+        wakeLock?.let {
+            if (it.isHeld) it.release()
+            wakeLock = null
+        }
         super.onDestroy()
         Log.i(TAG, "VoiceService: destroyed")
     }
@@ -89,15 +114,28 @@ class VoiceService : Service() {
         showForegroundNotification()
         WakeWordManager.setRunning(true)
 
+        synchronized(initLock) {
+            if (initializing) {
+                Log.d(TAG, "VoiceService: already initializing, skip duplicate start")
+                return
+            }
+            initializing = true
+        }
+
         if (engine.isReady) {
+            synchronized(initLock) { initializing = false }
             startEngine()
         } else {
             Thread({
-                if (!ensureInitializedSync()) {
-                    stopSelf()
-                    return@Thread
+                try {
+                    if (!ensureInitializedSync()) {
+                        stopSelf()
+                        return@Thread
+                    }
+                    startEngine()
+                } finally {
+                    synchronized(initLock) { initializing = false }
                 }
-                startEngine()
             }, "KwsInit").start()
         }
         Log.i(TAG, "VoiceService: wake detection started")
@@ -130,7 +168,11 @@ class VoiceService : Service() {
                 Log.i(TAG, "VoiceService: wake word '$keyword' detected — pausing KWS, debounce=${debounce}ms")
 
                 stopEngine()
-                WakeWordManager.notifyWakeWord()
+                // Post to coroutine so the detection loop's finally block can fully
+                // release the KWS AudioRecord before ASR creates its own AudioRecord.
+                serviceScope.launch {
+                    WakeWordManager.notifyWakeWord()
+                }
             },
             onError = { message ->
                 Log.e(TAG, "VoiceService: KWS engine error: $message")
