@@ -30,7 +30,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathFillType
+
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
@@ -614,7 +616,6 @@ private fun MicButton(
                 },
                 modifier = Modifier
                     .size(72.dp)
-                    .clip(CircleShape)
                     .shadow(
                         elevation = if (isActive || isSpeaking) 0.dp else 4.dp,
                         shape = CircleShape
@@ -707,10 +708,40 @@ private fun PulseRing(
     )
 
     Canvas(modifier = Modifier.size(size)) {
-        drawCircle(
-            color = color.copy(alpha = alpha),
-            radius = size.toPx() / 2,
-            style = Stroke(width = strokeWidth.toPx() * scale)
+        val canvasSizePx = size.toPx()
+        val radiusPx = canvasSizePx / 2f
+        val strokePx = strokeWidth.toPx() * scale
+        // Build a filled ring as two concentric circle paths with EvenOdd fill.
+        // This avoids drawCircle + Stroke tessellation artifacts on Mali GPUs.
+        val ringPath = Path().apply {
+            fillType = PathFillType.EvenOdd
+            addPath(circlePath(radiusPx, canvasSizePx))
+            addPath(circlePath((radiusPx - strokePx).coerceAtLeast(0f), canvasSizePx))
+        }
+        drawPath(
+            path = ringPath,
+            color = color.copy(alpha = alpha)
         )
+    }
+}
+
+/**
+ * Returns a smooth circle path with enough vertices to avoid visible polygon
+ * edges on GPUs that use coarse circle tessellation (e.g. Mali on Huawei).
+ */
+private fun circlePath(radius: Float, canvasSizePx: Float): Path {
+    val center = canvasSizePx / 2f
+    val segments = maxOf(256, (Math.PI * 2.0 * radius / 1.5).toInt().coerceAtMost(720))
+    val angleStep = (Math.PI * 2.0) / segments
+    return Path().apply {
+        moveTo(center + radius, center)
+        for (i in 1 until segments) {
+            val a = i * angleStep
+            lineTo(
+                (center + radius * Math.cos(a)).toFloat(),
+                (center + radius * Math.sin(a)).toFloat()
+            )
+        }
+        close()
     }
 }
