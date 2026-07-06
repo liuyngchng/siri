@@ -284,7 +284,7 @@ fun ModelSetupScreen(
                 modifier = Modifier.padding(top = 8.dp)
             )
             Text(
-                "启用\"小爱小爱\"语音唤醒所需的模型（~13MB）",
+                "启用\"小瑞小瑞\"语音唤醒所需的模型（~13MB）",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

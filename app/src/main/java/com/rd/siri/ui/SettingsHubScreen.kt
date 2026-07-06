@@ -134,7 +134,7 @@ fun SettingsHubScreen(
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Text(
-                            "说\"小爱小爱\"即可唤醒",
+                            "说\"小瑞小瑞\"即可唤醒",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
