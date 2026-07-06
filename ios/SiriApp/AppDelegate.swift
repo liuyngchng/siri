@@ -28,7 +28,14 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
     func applicationDidBecomeActive(_ application: UIApplication) {
         os_log(.info, "AppDelegate: didBecomeActive")
-        configureAudioSession()
+        // Re-activate the audio session without overwriting the current
+        // category/mode — KWS may have been running with .voiceChat.
+        do {
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            os_log(.error, "AppDelegate: failed to reactivate audio session: %{public}@",
+                   error.localizedDescription)
+        }
     }
 
     func applicationWillTerminate(_ application: UIApplication) {

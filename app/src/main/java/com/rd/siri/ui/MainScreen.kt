@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Hearing
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
@@ -122,6 +123,22 @@ fun MainScreen(
                         IconButton(onClick = { showClearDialog = true }) {
                             Icon(Icons.Filled.Delete, contentDescription = "清除历史")
                         }
+                    }
+                    // Wake word toggle — matches iOS ear icon
+                    IconButton(onClick = {
+                        viewModel.toggleWakeWord(!viewModel.isWakeWordEnabled())
+                    }) {
+                        Icon(
+                            imageVector = if (state.wakeWordEnabled)
+                                Icons.Filled.Hearing
+                            else
+                                Icons.Outlined.Hearing,
+                            contentDescription = if (state.wakeWordEnabled) "关闭语音唤醒" else "开启语音唤醒",
+                            tint = if (state.wakeWordEnabled)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(Icons.Filled.Settings, contentDescription = "设置")

@@ -44,6 +44,7 @@ class MainViewModel: ObservableObject {
 
     private var recordingCancellable: AnyCancellable?
     private var streamingCancellable: AnyCancellable?
+    private var streamingContinuation: CheckedContinuation<Void, Never>?
     private var speakingTask: Task<Void, Never>?
     private var recognitionTask: Task<Void, Never>?
     private var vadTask: Task<Void, Never>?
@@ -106,6 +107,8 @@ class MainViewModel: ObservableObject {
                 self.recognitionTask = nil
                 self.streamingCancellable?.cancel()
                 self.streamingCancellable = nil
+                self.streamingContinuation?.resume()
+                self.streamingContinuation = nil
                 self.speakingTask?.cancel()
                 self.speakingTask = nil
                 self.audioPlayer.stop()
@@ -533,6 +536,8 @@ class MainViewModel: ObservableObject {
         recognitionTask = nil
         streamingCancellable?.cancel()
         streamingCancellable = nil
+        streamingContinuation?.resume()
+        streamingContinuation = nil
         speakingTask?.cancel()
         speakingTask = nil
         audioPlayer.stop()
@@ -551,6 +556,7 @@ class MainViewModel: ObservableObject {
         let streamPublisher = chatSession.sendStream(text)
 
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            self.streamingContinuation = continuation
             var fullReply = ""
             var hasCompleted = false
 
@@ -560,6 +566,7 @@ class MainViewModel: ObservableObject {
                     receiveCompletion: { [weak self] completion in
                         guard !hasCompleted else { return }
                         hasCompleted = true
+                        self?.streamingContinuation = nil
 
                         Task { @MainActor in
                             if case .failure(let error) = completion {
@@ -586,6 +593,7 @@ class MainViewModel: ObservableObject {
         }
 
         streamingCancellable = nil
+        streamingContinuation = nil
     }
 
     // MARK: - TTS + Playback
