@@ -259,7 +259,7 @@ class LlmClient {
             "top_p": params.topP,
         ]
 
-        if config.enableSearch {
+        if config.enableSearch && config.supportsWebSearch {
             body["enable_search"] = true
         }
 
@@ -309,7 +309,8 @@ private class SSEDelegate: NSObject, URLSessionDataDelegate {
         if let error = error {
             let nsError = error as NSError
             if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled {
-                // Task was cancelled, don't report
+                // Task was cancelled — send .finished so downstream subscribers complete.
+                subject.send(completion: .finished)
             } else {
                 subject.send(completion: .failure(error))
             }

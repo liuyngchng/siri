@@ -1,11 +1,15 @@
 package com.rd.siri.audio
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.os.Process
 import android.util.Log
+import androidx.core.content.ContextCompat
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.sqrt
@@ -119,10 +123,20 @@ class WakeWordEngine(private val context: Context) {
 
     // ── Detection loop ───────────────────────────────────────────────────────
 
+    @SuppressLint("MissingPermission")
     private fun runDetectionLoop(
         onDetected: (String) -> Unit,
         onError: ((String) -> Unit)?
     ) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            Log.e(TAG, "WakeWordEngine: RECORD_AUDIO permission not granted")
+            isRunning.set(false)
+            onError?.invoke("RECORD_AUDIO permission not granted")
+            return
+        }
+
         val streamPtr = nativeCreateStream(spotterPtr)
         if (streamPtr == 0L) {
             Log.e(TAG, "WakeWordEngine: failed to create keyword stream")

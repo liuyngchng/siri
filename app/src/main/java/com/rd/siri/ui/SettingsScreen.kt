@@ -27,7 +27,7 @@ data class LlmPreset(
 )
 
 val LLM_PRESETS = listOf(
-    LlmPreset("阿里百炼(Qwen)", "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen-plus", "enable_search"),
+    LlmPreset("阿里百炼", "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen-plus", "enable_search"),
     LlmPreset("DeepSeek", "https://api.deepseek.com/v1", "deepseek-v4-flash", ""),
     LlmPreset("硅基流动", "https://api.siliconflow.cn/v1", "deepseek-ai/DeepSeek-V3", ""),
 )

@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Hearing
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
@@ -27,10 +28,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathFillType
+
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
@@ -119,6 +123,22 @@ fun MainScreen(
                         IconButton(onClick = { showClearDialog = true }) {
                             Icon(Icons.Filled.Delete, contentDescription = "清除历史")
                         }
+                    }
+                    // Wake word toggle — matches iOS ear icon
+                    IconButton(onClick = {
+                        viewModel.toggleWakeWord(!viewModel.isWakeWordEnabled())
+                    }) {
+                        Icon(
+                            imageVector = if (state.wakeWordEnabled)
+                                Icons.Filled.Hearing
+                            else
+                                Icons.Outlined.Hearing,
+                            contentDescription = if (state.wakeWordEnabled) "关闭语音唤醒" else "开启语音唤醒",
+                            tint = if (state.wakeWordEnabled)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(Icons.Filled.Settings, contentDescription = "设置")
@@ -571,8 +591,23 @@ private fun MicButton(
         else -> MaterialTheme.colorScheme.primary
     }
 
+    // Skip the first few frames to avoid GPU circle-tessellation artifacts
+    // (visible as a regular octagon on Mali GPUs during initial render setup).
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        withFrameNanos { }
+        visible = true
+    }
+    val buttonAlpha by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(200)
+    )
+
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .alpha(buttonAlpha),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -614,7 +649,6 @@ private fun MicButton(
                 },
                 modifier = Modifier
                     .size(72.dp)
-                    .clip(CircleShape)
                     .shadow(
                         elevation = if (isActive || isSpeaking) 0.dp else 4.dp,
                         shape = CircleShape
@@ -707,10 +741,40 @@ private fun PulseRing(
     )
 
     Canvas(modifier = Modifier.size(size)) {
-        drawCircle(
-            color = color.copy(alpha = alpha),
-            radius = size.toPx() / 2,
-            style = Stroke(width = strokeWidth.toPx() * scale)
+        val canvasSizePx = size.toPx()
+        val radiusPx = canvasSizePx / 2f
+        val strokePx = strokeWidth.toPx() * scale
+        // Build a filled ring as two concentric circle paths with EvenOdd fill.
+        // This avoids drawCircle + Stroke tessellation artifacts on Mali GPUs.
+        val ringPath = Path().apply {
+            fillType = PathFillType.EvenOdd
+            addPath(circlePath(radiusPx, canvasSizePx))
+            addPath(circlePath((radiusPx - strokePx).coerceAtLeast(0f), canvasSizePx))
+        }
+        drawPath(
+            path = ringPath,
+            color = color.copy(alpha = alpha)
         )
+    }
+}
+
+/**
+ * Returns a smooth circle path with enough vertices to avoid visible polygon
+ * edges on GPUs that use coarse circle tessellation (e.g. Mali on Huawei).
+ */
+private fun circlePath(radius: Float, canvasSizePx: Float): Path {
+    val center = canvasSizePx / 2f
+    val segments = maxOf(256, (Math.PI * 2.0 * radius / 1.5).toInt().coerceAtMost(720))
+    val angleStep = (Math.PI * 2.0) / segments
+    return Path().apply {
+        moveTo(center + radius, center)
+        for (i in 1 until segments) {
+            val a = i * angleStep
+            lineTo(
+                (center + radius * Math.cos(a)).toFloat(),
+                (center + radius * Math.sin(a)).toFloat()
+            )
+        }
+        close()
     }
 }

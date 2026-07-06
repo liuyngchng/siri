@@ -26,7 +26,7 @@ class ConfigViewModel: ObservableObject {
         config = repository.getConfig()
     }
 
-    func saveConfig(_ apiUrl: String, _ model: String, _ apiKey: String, enableSearch: Bool = false) {
+    func saveConfig(_ apiUrl: String, _ model: String, _ apiKey: String) {
         let trimmedUrl = apiUrl.trimmingCharacters(in: .whitespaces)
             .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let trimmedModel = model.trimmingCharacters(in: .whitespaces)
@@ -45,8 +45,7 @@ class ConfigViewModel: ObservableObject {
         let newConfig = LlmConfig(
             apiUrl: trimmedUrl,
             model: trimmedModel,
-            apiKey: trimmedKey,
-            enableSearch: enableSearch
+            apiKey: trimmedKey
         )
         repository.saveConfig(newConfig)
         config = newConfig

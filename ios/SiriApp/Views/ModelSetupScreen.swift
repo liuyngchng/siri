@@ -81,12 +81,13 @@ private struct ModelFilePicker: UIViewControllerRepresentable {
 // MARK: - Sheet Target
 
 enum ModelSheetTarget: Identifiable {
-    case asr, tts, vocoder
+    case asr, tts, vocoder, kws
     var id: Int {
         switch self {
         case .asr: return 0
         case .tts: return 1
         case .vocoder: return 2
+        case .kws: return 3
         }
     }
 }
@@ -128,6 +129,10 @@ struct ModelSetupContent: View {
         if case .completed = modelManager.vocoderState { return true }
         return ModelManager.checkVocoderReady()
     }
+    private var kwsOk: Bool {
+        if case .completed = modelManager.kwsState { return true }
+        return ModelManager.checkKwsReady()
+    }
 
     private var ttsOk: Bool { ttsTarOk && vocoderOk }
     private var allReady: Bool { asrOk && ttsOk }
@@ -153,6 +158,10 @@ struct ModelSetupContent: View {
         if case .downloading = modelManager.vocoderState { return true }
         if case .importing = modelManager.vocoderState { return true }
         if case .extracting = modelManager.vocoderState { return true }
+        if case .queued = modelManager.kwsState { return true }
+        if case .downloading = modelManager.kwsState { return true }
+        if case .importing = modelManager.kwsState { return true }
+        if case .extracting = modelManager.kwsState { return true }
         return false
     }
 
@@ -193,7 +202,14 @@ struct ModelSetupContent: View {
                         onImport: { sheetTarget = .vocoder })
             }
 
-            Section(footer: Text("模型文件较大，建议在 Wi-Fi 环境下下载。也可通过文件 App 导入已下载的模型文件。")) {
+            Section(header: Text("语音唤醒 (可选)")) {
+                slotRow(label: "KWS Zipformer", subtitle: "关键词检测 · ~13MB",
+                        isReady: kwsOk, state: modelManager.kwsState,
+                        onDownload: { modelManager.downloadKwsModel() },
+                        onImport: { sheetTarget = .kws })
+            }
+
+            Section(footer: Text("模型文件较大，建议在 Wi-Fi 环境下下载。也可通过文件 App 导入已下载的模型文件。唤醒模型为可选，如需使用语音唤醒功能请下载。")) {
                 EmptyView()
             }
         }
@@ -353,6 +369,21 @@ struct ModelSetupContent: View {
                     pickerLog.info("Vocoder import picked: \(url.lastPathComponent)")
                     pickerLog.info("→ importVocoder")
                     modelManager.importVocoder(from: url, cleanup: cleanup)
+                    sheetTarget = nil
+                },
+                onError: { errorMessage = $0 }
+            )
+        case .kws:
+            ModelFilePicker(
+                allowedContentTypes: [
+                    UTType(tag: "bz2", tagClass: .filenameExtension, conformingTo: .data) ?? .data,
+                    UTType(tag: "tar", tagClass: .filenameExtension, conformingTo: .data) ?? .data,
+                    UTType(tag: "tar.bz2", tagClass: .filenameExtension, conformingTo: .data) ?? .data,
+                ],
+                onPick: { url, cleanup in
+                    pickerLog.info("KWS import picked: \(url.lastPathComponent)")
+                    pickerLog.info("→ importKwsModel")
+                    modelManager.importKwsModel(from: url, cleanup: cleanup)
                     sheetTarget = nil
                 },
                 onError: { errorMessage = $0 }

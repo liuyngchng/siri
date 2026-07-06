@@ -33,13 +33,16 @@ object WakeWordManager {
 
     private const val BASE_DEBOUNCE_MS = 5000L
     private const val MAX_DEBOUNCE_MS = 120_000L
+    // Cap shift exponent to prevent overflow: 1L << 62 is safe; 1L << 63 = Long.MIN_VALUE.
+    private const val MAX_SHIFT = 62
     private var consecutiveFalseTriggers = 0
 
     /** Current debounce window based on recent false-trigger history. */
     val currentDebounceMs: Long
         get() {
             if (consecutiveFalseTriggers == 0) return BASE_DEBOUNCE_MS
-            val doubled = BASE_DEBOUNCE_MS * (1L shl consecutiveFalseTriggers)
+            val shift = consecutiveFalseTriggers.coerceAtMost(MAX_SHIFT)
+            val doubled = BASE_DEBOUNCE_MS * (1L shl shift)
             return doubled.coerceAtMost(MAX_DEBOUNCE_MS)
         }
 

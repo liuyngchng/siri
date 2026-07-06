@@ -141,30 +141,41 @@ struct MainScreen: View {
         }
     }
 
-    // MARK: - Mic Bar
+    // MARK: - Mic Bar (blurred bottom bar)
 
     private var micBar: some View {
-        MicButton(
-            voiceState: viewModel.state.voiceState,
-            enabled: viewModel.state.enginesReady,
-            onPressStart: {
-                _ = viewModel.checkConfig()
-                viewModel.startListening()
-            },
-            onPressEnd: {
-                if case .listening = viewModel.state.voiceState {
-                    viewModel.stopListening()
+        VStack(spacing: 0) {
+            // Subtle separator line
+            Rectangle()
+                .fill(Color(.separator).opacity(0.3))
+                .frame(height: 0.5)
+
+            MicButton(
+                voiceState: viewModel.state.voiceState,
+                enabled: viewModel.state.enginesReady,
+                onPressStart: {
+                    _ = viewModel.checkConfig()
+                    viewModel.startListening()
+                },
+                onPressEnd: {
+                    if case .listening = viewModel.state.voiceState {
+                        viewModel.stopListening()
+                    }
+                },
+                onPressCancel: {
+                    viewModel.cancelListening()
+                },
+                onStopSpeaking: {
+                    viewModel.stopSpeaking()
                 }
-            },
-            onPressCancel: {
-                viewModel.cancelListening()
-            },
-            onStopSpeaking: {
-                viewModel.stopSpeaking()
-            }
+            )
+            .padding(.top, ChatSpacing.pt8)
+            .padding(.bottom, ChatSpacing.pt6)
+        }
+        .background(
+            BlurView(style: .systemMaterial)
+                .edgesIgnoringSafeArea(.bottom)
         )
-        .padding(.top, ChatSpacing.pt12)
-        .padding(.bottom, ChatSpacing.pt16)
     }
 
     // MARK: - Toolbar
@@ -180,6 +191,7 @@ struct MainScreen: View {
                     }
                     .accessibilityLabel("清除历史")
                 }
+                wakeWordToggle
                 Button(action: onNavigateToSettings) {
                     Image(systemName: "gearshape")
                         .font(.system(size: 18, weight: .medium))
@@ -187,6 +199,21 @@ struct MainScreen: View {
                 .accessibilityLabel("设置")
             }
         }
+    }
+
+    @ViewBuilder
+    private var wakeWordToggle: some View {
+        Button(action: {
+            let newValue = !viewModel.state.wakeWordEnabled
+            viewModel.toggleWakeWord(newValue)
+        }) {
+            Image(systemName: viewModel.state.wakeWordEnabled
+                  ? "ear.fill"
+                  : "ear")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(viewModel.state.wakeWordEnabled ? .blue : .primary)
+        }
+        .accessibilityLabel(viewModel.state.wakeWordEnabled ? "关闭语音唤醒" : "开启语音唤醒")
     }
 
     // MARK: - Alert
