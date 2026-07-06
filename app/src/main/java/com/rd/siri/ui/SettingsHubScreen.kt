@@ -103,7 +103,7 @@ fun SettingsHubScreen(
                 SettingsRow(
                     icon = Icons.Filled.Mic,
                     title = "语音模型",
-                    subtitle = "ASR、TTS、Vocoder 模型管理",
+                    subtitle = "ASR、TTS 等模型管理",
                     onClick = onNavigateToModelSetup
                 )
             }
@@ -150,17 +150,17 @@ fun SettingsHubScreen(
             if (showBatteryWarning) {
                 item(key = "battery_warning") {
                     Surface(
+                        onClick = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                    data = android.net.Uri.parse("package:${context.packageName}")
+                                }
+                                context.startActivity(intent)
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                            .clickable {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                                        data = android.net.Uri.parse("package:${context.packageName}")
-                                    }
-                                    context.startActivity(intent)
-                                }
-                            },
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                         color = MaterialTheme.colorScheme.errorContainer,
                         shape = MaterialTheme.shapes.medium
                     ) {
