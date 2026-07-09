@@ -129,10 +129,7 @@ fun MainScreen(
                         viewModel.toggleWakeWord(!viewModel.isWakeWordEnabled())
                     }) {
                         Icon(
-                            imageVector = if (state.wakeWordEnabled)
-                                Icons.Filled.Hearing
-                            else
-                                Icons.Outlined.Hearing,
+                            imageVector = Icons.Filled.Hearing,
                             contentDescription = if (state.wakeWordEnabled) "关闭语音唤醒" else "开启语音唤醒",
                             tint = if (state.wakeWordEnabled)
                                 MaterialTheme.colorScheme.primary
