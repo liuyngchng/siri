@@ -9,7 +9,8 @@ import kotlinx.coroutines.flow.asStateFlow
 class ChatSession(
     private val llmClient: LlmClient,
     private val maxHistory: Int = 5,
-    private val maxScreenMessages: Int = 20
+    private val maxScreenMessages: Int = 20,
+    private val maxContextBufferSize: Int = 200
 ) {
 
     /** Messages shown on screen — capped at [maxScreenMessages]. */
@@ -31,17 +32,26 @@ class ChatSession(
         _messages.value = (_messages.value + msg).takeLast(maxScreenMessages)
     }
 
+    /** Append to context buffer and trim to [maxContextBufferSize] to bound memory. */
+    private fun appendToContext(msg: ChatMessage) {
+        contextBuffer.add(msg)
+        if (contextBuffer.size > maxContextBufferSize) {
+            val excess = contextBuffer.size - maxContextBufferSize
+            contextBuffer.subList(0, excess).clear()
+        }
+    }
+
     suspend fun send(text: String): Result<String> {
         val userMsg = ChatMessage(role = ChatMessage.Role.USER, content = text)
         appendToScreen(userMsg)
-        contextBuffer.add(userMsg)
+        appendToContext(userMsg)
 
         val result = llmClient.chat(contextMessages)
 
         result.onSuccess { reply ->
             val assistantMsg = ChatMessage(role = ChatMessage.Role.ASSISTANT, content = reply)
             appendToScreen(assistantMsg)
-            contextBuffer.add(assistantMsg)
+            appendToContext(assistantMsg)
         }.onFailure {
             // Rollback both buffers on failure
             _messages.value = _messages.value.dropLast(1)
@@ -54,7 +64,7 @@ class ChatSession(
     suspend fun sendStream(text: String): Result<Flow<String>> {
         val userMsg = ChatMessage(role = ChatMessage.Role.USER, content = text)
         appendToScreen(userMsg)
-        contextBuffer.add(userMsg)
+        appendToContext(userMsg)
 
         return try {
             val flow = llmClient.chatStream(contextMessages)
@@ -70,7 +80,7 @@ class ChatSession(
         if (text.isBlank()) return
         val assistantMsg = ChatMessage(role = ChatMessage.Role.ASSISTANT, content = text)
         appendToScreen(assistantMsg)
-        contextBuffer.add(assistantMsg)
+        appendToContext(assistantMsg)
     }
 
     /** Full clear — both screen and LLM context (user-initiated). */

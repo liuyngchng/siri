@@ -28,6 +28,7 @@ class AudioRecorder(private val context: Context) {
                 PackageManager.PERMISSION_GRANTED
     }
 
+    @Volatile
     private var audioRecord: AudioRecord? = null
     private val isRecording = AtomicBoolean(false)
     private val bufferSize: Int = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT)

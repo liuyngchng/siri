@@ -43,13 +43,15 @@ fun SettingsHubScreen(
 ) {
     val context = LocalContext.current
     val powerManager = remember { context.getSystemService(android.content.Context.POWER_SERVICE) as PowerManager }
-    val batteryOptimized = remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            !powerManager.isIgnoringBatteryOptimizations(context.packageName)
-        } else false
-    }
-    var showBatteryWarning by remember(wakeWordEnabled, batteryOptimized) {
-        mutableStateOf(wakeWordEnabled && batteryOptimized)
+    // Refresh battery optimization state on every recomposition so that
+    // returning from the system settings screen reflects the change.
+    val batteryOptimized = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        !powerManager.isIgnoringBatteryOptimizations(context.packageName)
+    } else false
+    var showBatteryWarning by remember { mutableStateOf(wakeWordEnabled && batteryOptimized) }
+    // Sync warning visibility when wakeWordEnabled or batteryOptimized changes
+    LaunchedEffect(wakeWordEnabled, batteryOptimized) {
+        showBatteryWarning = wakeWordEnabled && batteryOptimized
     }
 
     val appVersion = remember {

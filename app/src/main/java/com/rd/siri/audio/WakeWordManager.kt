@@ -32,7 +32,7 @@ object WakeWordManager {
     // ── Adaptive debounce state ────────────────────────────────────────────
 
     private const val BASE_DEBOUNCE_MS = 5000L
-    private const val MAX_DEBOUNCE_MS = 120_000L
+    private const val MAX_DEBOUNCE_MS = 30_000L
     // Cap shift exponent to prevent overflow: 1L << 62 is safe; 1L << 63 = Long.MIN_VALUE.
     private const val MAX_SHIFT = 62
     private var consecutiveFalseTriggers = 0

@@ -16,10 +16,12 @@ class AudioPlayer {
     }
 
     private var activeTrack: AudioTrack? = null
+    @Volatile
     private var isPlaying = false
 
     /**
-     * Play PCM float audio. Creates a fresh AudioTrack per sentence.
+     * Play PCM float audio. Uses MODE_STREAM to support arbitrarily long audio
+     * (MODE_STATIC has a ~1 MB buffer limit which can truncate long TTS output).
      */
     suspend fun play(pcmFloats: FloatArray, sampleRate: Int = 22050) = withContext(Dispatchers.IO) {
         val shortSamples = ShortArray(pcmFloats.size) { i ->
@@ -28,10 +30,8 @@ class AudioPlayer {
                 .toShort()
         }
 
-        val bufferSizeInBytes = maxOf(
-            shortSamples.size * 2,
-            AudioTrack.getMinBufferSize(sampleRate, CHANNEL_CONFIG, AUDIO_FORMAT)
-        )
+        val minBufSize = AudioTrack.getMinBufferSize(sampleRate, CHANNEL_CONFIG, AUDIO_FORMAT)
+        val bufferSizeInBytes = maxOf(shortSamples.size * 2, minBufSize)
 
         val track = AudioTrack.Builder()
             .setAudioAttributes(
@@ -48,15 +48,23 @@ class AudioPlayer {
                     .build()
             )
             .setBufferSizeInBytes(bufferSizeInBytes)
-            .setTransferMode(AudioTrack.MODE_STATIC)
+            .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
 
         activeTrack = track
         isPlaying = true
 
         try {
-            track.write(shortSamples, 0, shortSamples.size)
             track.play()
+            // Write in chunks to avoid overwhelming the buffer
+            val chunkSize = minBufSize / 2
+            var offset = 0
+            while (offset < shortSamples.size) {
+                val remaining = shortSamples.size - offset
+                val toWrite = minOf(chunkSize, remaining)
+                track.write(shortSamples, offset, toWrite)
+                offset += toWrite
+            }
             awaitPlaybackComplete(track, shortSamples.size, sampleRate)
         } finally {
             isPlaying = false

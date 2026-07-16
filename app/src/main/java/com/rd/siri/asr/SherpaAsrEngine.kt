@@ -13,7 +13,9 @@ class SherpaAsrEngine(private val context: Context) {
         private const val TOKENS_FILE = "tokens.txt"
     }
 
+    @Volatile
     private var statePtr: Long = 0
+    @Volatile
     private var isInitialized = false
 
     fun initialize(): Boolean {

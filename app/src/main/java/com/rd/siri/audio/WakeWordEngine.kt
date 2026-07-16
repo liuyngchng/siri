@@ -104,11 +104,8 @@ class WakeWordEngine(private val context: Context) {
     fun stop() {
         isRunning.set(false)
         audioRecord?.stop()
-        // Don't join the detection thread if called from within it
-        val thread = detectionThread
-        if (thread != null && thread.id != Thread.currentThread().id) {
-            thread.join(1000)
-        }
+        // Don't join the detection thread — it will exit naturally after
+        // isRunning=false and AudioRecord.stop() unblocks read().
         detectionThread = null
     }
 

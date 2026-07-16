@@ -18,7 +18,9 @@ class SherpaTtsEngine(private val context: Context) {
         const val DEFAULT_SAMPLE_RATE = 22050
     }
 
+    @Volatile
     private var statePtr: Long = 0
+    @Volatile
     private var isInitialized = false
 
     fun initialize(): Boolean {

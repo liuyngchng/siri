@@ -9,6 +9,7 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.rd.siri.SiriApp
 import com.rd.siri.audio.AudioPlayer
 import com.rd.siri.audio.AudioRecorder
 import com.rd.siri.audio.VoiceService
@@ -109,6 +110,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch(Dispatchers.IO) {
             _state.update { it.copy(voiceState = VoiceState.Loading("模型加载中…")) }
+
+            // Check native libraries first — if they failed to load, bail out early
+            if (!SiriApp.instance.nativeLibrariesLoaded) {
+                _state.update {
+                    it.copy(voiceState = VoiceState.Error("原生引擎加载失败，请重新安装应用"))
+                }
+                return@launch
+            }
 
             val asrDeferred = async { asrEngine.initialize() }
             val ttsDeferred = async { ttsEngine.initialize() }

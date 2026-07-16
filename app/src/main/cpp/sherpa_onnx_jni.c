@@ -65,6 +65,11 @@ Java_com_rd_siri_asr_SherpaAsrEngine_nativeCreateRecognizer(
     }
 
     RecognizerState *state = malloc(sizeof(RecognizerState));
+    if (!state) {
+        LOGE("ASR: Out of memory allocating RecognizerState");
+        SherpaOnnxDestroyOfflineRecognizer(recognizer);
+        return 0;
+    }
     memset(state, 0, sizeof(RecognizerState));
     state->recognizer = recognizer;
 
@@ -234,6 +239,11 @@ Java_com_rd_siri_tts_SherpaTtsEngine_nativeCreateTts(
     }
 
     TtsState *state = malloc(sizeof(TtsState));
+    if (!state) {
+        LOGE("TTS: Out of memory allocating TtsState");
+        SherpaOnnxDestroyOfflineTts(tts);
+        return 0;
+    }
     state->tts = tts;
 
     int32_t sr = SherpaOnnxOfflineTtsSampleRate(tts);
@@ -420,6 +430,11 @@ Java_com_rd_siri_audio_WakeWordEngine_nativeCreateSpotter(
     }
 
     KwsState *state = malloc(sizeof(KwsState));
+    if (!state) {
+        LOGE("KWS: Out of memory allocating KwsState");
+        SherpaOnnxDestroyKeywordSpotter(spotter);
+        return 0;
+    }
     memset(state, 0, sizeof(KwsState));
     state->spotter = spotter;
 

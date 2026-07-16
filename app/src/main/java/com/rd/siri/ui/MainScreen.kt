@@ -97,9 +97,18 @@ fun MainScreen(
 
     LaunchedEffect(Unit) { viewModel.checkConfig() }
 
-    LaunchedEffect(messages.size, state.assistantReply) {
+    // Scroll to bottom on new messages. Use instant scroll during streaming
+    // (voiceState is Speaking/Thinking) to avoid animation jank from frequent
+    // token-level updates; animate only when a new message is fully added.
+    LaunchedEffect(messages.size, state.voiceState) {
         if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
+            val isStreaming = state.voiceState is VoiceState.Speaking
+                || state.voiceState is VoiceState.Thinking
+            if (isStreaming) {
+                listState.scrollToItem(messages.size - 1)
+            } else {
+                listState.animateScrollToItem(messages.size - 1)
+            }
         }
     }
 

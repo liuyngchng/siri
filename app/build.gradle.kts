@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.rd.siri"
-    compileSdk = 33
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.rd.siri"
         minSdk = 31
-        targetSdk = 33
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
 
@@ -26,6 +26,16 @@ android {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
             version = "3.22.1"
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 
