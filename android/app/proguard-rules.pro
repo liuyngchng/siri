@@ -38,3 +38,12 @@
 # ── Keep data classes used with EncryptedSharedPreferences ──────────────────
 -keep class com.rd.siri.config.LlmConfig { *; }
 -keep class com.rd.siri.model.** { *; }
+
+# ── Tink (EncryptedSharedPreferences dependency) ─────────────────────────────
+# Tink uses error-prone annotations at compile time only — safe to ignore.
+-dontwarn com.google.errorprone.annotations.**
+
+# ── Conscrypt (optional TLS provider) ─────────────────────────────────────────
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.openjsse.**

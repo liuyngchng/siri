@@ -30,12 +30,17 @@ android {
     }
 
     buildTypes {
+        debug {
+            isDebuggable = true
+        }
         release {
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Use debug keystore for local install testing (./gradlew installRelease)
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
