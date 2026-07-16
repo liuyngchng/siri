@@ -40,7 +40,9 @@ fun SettingsHubScreen(
     onNavigateToModelSetup: () -> Unit,
     onDismiss: () -> Unit,
     wakeWordEnabled: Boolean = false,
-    onToggleWakeWord: (Boolean) -> Unit = {}
+    onToggleWakeWord: (Boolean) -> Unit = {},
+    ttsEnabled: Boolean = true,
+    onToggleTts: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     val powerManager = remember { context.getSystemService(android.content.Context.POWER_SERVICE) as PowerManager }
@@ -145,6 +147,38 @@ fun SettingsHubScreen(
                     Switch(
                         checked = wakeWordEnabled,
                         onCheckedChange = onToggleWakeWord
+                    )
+                }
+            }
+            item(key = "tts_toggle") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Filled.RecordVoiceOver,
+                        contentDescription = null,
+                        tint = if (ttsEnabled) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "语音播报",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            "回答时朗读结果",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = ttsEnabled,
+                        onCheckedChange = onToggleTts
                     )
                 }
             }

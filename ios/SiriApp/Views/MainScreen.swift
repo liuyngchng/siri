@@ -292,14 +292,14 @@ struct StatusCenter: View {
                         .font(.title2.weight(.semibold))
                         .foregroundColor(ChatColors.emptyStatePrimary)
 
-                    Text("按住麦克风按钮开始说话")
+                    Text("轻点麦克风按钮开始说话")
                         .font(.body)
                         .foregroundColor(ChatColors.emptyStateSecondary)
                 }
             }
             .frame(maxWidth: 280)
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("语音助手，按住麦克风按钮开始说话")
+            .accessibilityLabel("语音助手，轻点麦克风按钮开始说话")
 
         default:
             EmptyView()

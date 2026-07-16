@@ -8,9 +8,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -339,7 +337,7 @@ private fun IdleState() {
                 color = MaterialTheme.colorScheme.onBackground
             )
             Text(
-                "按住麦克风按钮开始说话",
+                "轻点麦克风按钮开始说话",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
@@ -549,12 +547,6 @@ private fun MicButton(
     onPressCancel: () -> Unit,
     onStopSpeaking: () -> Unit
 ) {
-    val currentVoiceState by rememberUpdatedState(voiceState)
-    val currentOnPressStart by rememberUpdatedState(onPressStart)
-    val currentOnPressEnd by rememberUpdatedState(onPressEnd)
-    val currentOnPressCancel by rememberUpdatedState(onPressCancel)
-    val currentOnStopSpeaking by rememberUpdatedState(onStopSpeaking)
-
     val haptic = LocalHapticFeedback.current
     val isListening = voiceState is VoiceState.Listening
     val isProcessing = voiceState is VoiceState.Recognizing
@@ -562,15 +554,8 @@ private fun MicButton(
     val isSpeaking = voiceState is VoiceState.Speaking
     val isActive = isListening || isProcessing
 
-    // Toggle mode: track whether recording was started by tap (vs hold)
-    var isToggleMode by remember { mutableStateOf(false) }
-    LaunchedEffect(voiceState) {
-        if (voiceState is VoiceState.Idle) isToggleMode = false
-    }
-
     val statusHint = when {
-        isToggleMode && isListening -> "轻点停止"
-        isListening -> "松手停止"
+        isListening -> "轻点停止"
         isProcessing -> "轻点取消"
         isSpeaking -> "轻点停止播报"
         else -> ""
@@ -590,6 +575,19 @@ private fun MicButton(
         else -> MaterialTheme.colorScheme.primary
     }
 
+    val iconVector = when {
+        isProcessing -> Icons.Filled.Stop
+        isActive || isSpeaking -> Icons.Filled.Stop
+        else -> Icons.Filled.Mic
+    }
+
+    val contentDescription = when {
+        isListening -> "停止录音"
+        isProcessing -> "取消"
+        isSpeaking -> "停止播报"
+        else -> "开始录音"
+    }
+
     val showPulse = isActive || isSpeaking
     val pulseColor = when {
         isSpeaking -> MaterialTheme.colorScheme.error
@@ -598,7 +596,6 @@ private fun MicButton(
     }
 
     // Skip the first few frames to avoid GPU circle-tessellation artifacts
-    // (visible as a regular octagon on Mali GPUs during initial render setup).
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         withFrameNanos { }
@@ -636,7 +633,7 @@ private fun MicButton(
             )
         }
 
-        // Button with pulse ring
+        // Button with pulse ring — simple tap-to-toggle
         Box(contentAlignment = Alignment.Center) {
             if (showPulse) {
                 PulseRing(
@@ -649,8 +646,12 @@ private fun MicButton(
             FilledIconButton(
                 enabled = enabled,
                 onClick = {
-                    if (isSpeaking) {
-                        currentOnStopSpeaking()
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    when {
+                        isSpeaking -> onStopSpeaking()
+                        isProcessing -> onPressCancel()
+                        isListening -> onPressEnd()
+                        else -> onPressStart()
                     }
                 },
                 modifier = Modifier
@@ -658,60 +659,14 @@ private fun MicButton(
                     .shadow(
                         elevation = if (isActive || isSpeaking) 0.dp else 4.dp,
                         shape = CircleShape
-                    )
-                    .pointerInput(enabled) {
-                        if (!enabled) return@pointerInput
-                        awaitPointerEventScope {
-                            while (true) {
-                                awaitFirstDown(requireUnconsumed = false)
-                                val downTime = System.currentTimeMillis()
-                                val state = currentVoiceState
-                                val wasIdleWhenPressed = state is VoiceState.Idle
-
-                                // Tap to cancel processing/speaking
-                                if (state is VoiceState.Recognizing || state is VoiceState.Thinking) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    currentOnPressCancel()
-                                    waitForUpOrCancellation()
-                                    continue
-                                }
-                                if (state is VoiceState.Speaking) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    currentOnStopSpeaking()
-                                    waitForUpOrCancellation()
-                                    continue
-                                }
-
-                                if (state is VoiceState.Idle) {
-                                    currentOnPressStart()
-                                }
-                                waitForUpOrCancellation()
-                                if (currentVoiceState is VoiceState.Listening) {
-                                    val duration = System.currentTimeMillis() - downTime
-                                    if (duration < 300 && wasIdleWhenPressed) {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        currentOnPressCancel()
-                                    } else {
-                                        currentOnPressEnd()
-                                    }
-                                }
-                            }
-                        }
-                    },
+                    ),
                 colors = IconButtonDefaults.filledIconButtonColors(
                     containerColor = buttonBg
                 )
             ) {
                 Icon(
-                    imageVector = when {
-                        isActive || isSpeaking -> Icons.Filled.Stop
-                        else -> Icons.Filled.Mic
-                    },
-                    contentDescription = when {
-                        isListening -> "松开发送"
-                        isSpeaking -> "停止播报"
-                        else -> "按住说话"
-                    },
+                    imageVector = iconVector,
+                    contentDescription = contentDescription,
                     modifier = Modifier.size(28.dp),
                     tint = iconTint
                 )

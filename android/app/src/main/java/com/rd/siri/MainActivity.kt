@@ -62,6 +62,10 @@ class MainActivity : ComponentActivity() {
                             wakeWordEnabled = appState.wakeWordEnabled,
                             onToggleWakeWord = { enable ->
                                 mainViewModel.toggleWakeWord(enable)
+                            },
+                            ttsEnabled = appState.ttsEnabled,
+                            onToggleTts = { enable ->
+                                mainViewModel.toggleTts(enable)
                             }
                         )
                         SettingsSubScreen.LLM_CONFIG -> SettingsScreen(

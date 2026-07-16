@@ -71,6 +71,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         Log.i(TAG, "MainViewModel init start")
 
+        // Load TTS preference
+        _state.update { it.copy(ttsEnabled = configRepository.isTtsEnabled()) }
+
         // Observe wake word state from service (source of truth for UI)
         viewModelScope.launch {
             WakeWordManager.isRunning.collect { running ->
@@ -97,10 +100,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     wakeWordTriggered = true
                     multiTurnActive = true
                     launch(Dispatchers.IO) {
-                        _state.update { it.copy(voiceState = VoiceState.Speaking) }
-                        val pcm = ttsEngine.synthesize("哎，我在呢", sid = 0)
-                        if (pcm != null) {
-                            audioPlayer.play(pcm, ttsEngine.getSampleRate())
+                        if (_state.value.ttsEnabled) {
+                            _state.update { it.copy(voiceState = VoiceState.Speaking) }
+                            val pcm = ttsEngine.synthesize("哎，我在呢", sid = 0)
+                            if (pcm != null) {
+                                audioPlayer.play(pcm, ttsEngine.getSampleRate())
+                            }
                         }
                         startListening()
                     }
@@ -158,6 +163,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 getApplication<Application>().stopService(intent)
             }
+        }
+    }
+
+    fun toggleTts(enable: Boolean) {
+        configRepository.setTtsEnabled(enable)
+        _state.update { it.copy(ttsEnabled = enable) }
+        if (!enable) {
+            stopSpeaking()
         }
     }
 
@@ -354,6 +367,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun speakText(text: String) {
+        if (!_state.value.ttsEnabled) {
+            _state.update { it.copy(voiceState = VoiceState.Idle) }
+            return
+        }
         speakingJob?.cancel()
         audioPlayer.stop()
 
@@ -399,76 +416,96 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         textFlow: Flow<String>,
         accumulator: StringBuilder
     ) {
-        val sampleRate = ttsEngine.getSampleRate()
-        val sentenceChannel = Channel<String>(Channel.UNLIMITED)
-        val pcmChannel = Channel<FloatArray>(Channel.BUFFERED)
-        var lastBoundary = 0
+        val ttsEnabled = _state.value.ttsEnabled
 
-        _state.update { it.copy(voiceState = VoiceState.Speaking) }
+        if (ttsEnabled) {
+            _state.update { it.copy(voiceState = VoiceState.Speaking) }
+        }
 
-        coroutineScope {
-            val synthJob = launch(Dispatchers.IO) {
+        if (ttsEnabled) {
+            val sampleRate = ttsEngine.getSampleRate()
+            val sentenceChannel = Channel<String>(Channel.UNLIMITED)
+            val pcmChannel = Channel<FloatArray>(Channel.BUFFERED)
+            var lastBoundary = 0
+
+            coroutineScope {
+                val synthJob = launch(Dispatchers.IO) {
+                    try {
+                        for (sentence in sentenceChannel) {
+                            val normalized = com.rd.siri.tts.TextNormalizer.normalize(sentence)
+                            if (normalized.isBlank()) continue
+                            Log.i(TAG, "speakStream: synthesizing '${normalized.take(40)}'")
+                            val pcm = ttsEngine.synthesize(normalized, sid = 0)
+                            if (pcm != null) {
+                                pcmChannel.send(pcm)
+                            }
+                        }
+                    } finally {
+                        pcmChannel.close()
+                    }
+                }
+
+                val playerJob = launch(Dispatchers.IO) {
+                    for (pcm in pcmChannel) {
+                        audioPlayer.play(pcm, sampleRate)
+                    }
+                }
+
                 try {
-                    for (sentence in sentenceChannel) {
-                        val normalized = com.rd.siri.tts.TextNormalizer.normalize(sentence)
-                        if (normalized.isBlank()) continue
-                        Log.i(TAG, "speakStream: synthesizing '${normalized.take(40)}'")
-                        val pcm = ttsEngine.synthesize(normalized, sid = 0)
-                        if (pcm != null) {
-                            pcmChannel.send(pcm)
+                    textFlow.collect { token ->
+                        accumulator.append(token)
+                        _state.update { it.copy(assistantReply = accumulator.toString()) }
+
+                        val text = accumulator.toString()
+                        while (lastBoundary < text.length) {
+                            var boundaryIdx = -1
+                            for (i in lastBoundary until text.length) {
+                                if (text[i] in SENTENCE_TERMINATORS) {
+                                    boundaryIdx = i
+                                    break
+                                }
+                            }
+                            if (boundaryIdx == -1) break
+
+                            val sentence = text.substring(lastBoundary, boundaryIdx).trim()
+                            if (sentence.isNotBlank()) {
+                                sentenceChannel.send(sentence)
+                            }
+                            lastBoundary = boundaryIdx + 1
                         }
                     }
                 } finally {
-                    pcmChannel.close()
+                    val remaining = accumulator.toString().substring(lastBoundary).trim()
+                    if (remaining.isNotBlank()) {
+                        Log.i(TAG, "speakStream: flushing remaining '${remaining.take(40)}'")
+                        sentenceChannel.send(remaining)
+                    }
+                    sentenceChannel.close()
                 }
-            }
 
-            val playerJob = launch(Dispatchers.IO) {
-                for (pcm in pcmChannel) {
-                    audioPlayer.play(pcm, sampleRate)
+                val reply = accumulator.toString()
+                if (reply.isNotBlank()) {
+                    chatSession.appendAssistantReply(reply)
                 }
-            }
+                _state.update { it.copy(assistantReply = reply) }
 
+                synthJob.join()
+                playerJob.join()
+            }
+        } else {
+            // TTS disabled: just collect the stream, save to chat, no audio
             try {
                 textFlow.collect { token ->
                     accumulator.append(token)
                     _state.update { it.copy(assistantReply = accumulator.toString()) }
-
-                    val text = accumulator.toString()
-                    while (lastBoundary < text.length) {
-                        var boundaryIdx = -1
-                        for (i in lastBoundary until text.length) {
-                            if (text[i] in SENTENCE_TERMINATORS) {
-                                boundaryIdx = i
-                                break
-                            }
-                        }
-                        if (boundaryIdx == -1) break
-
-                        val sentence = text.substring(lastBoundary, boundaryIdx).trim()
-                        if (sentence.isNotBlank()) {
-                            sentenceChannel.send(sentence)
-                        }
-                        lastBoundary = boundaryIdx + 1
-                    }
                 }
             } finally {
-                val remaining = accumulator.toString().substring(lastBoundary).trim()
-                if (remaining.isNotBlank()) {
-                    Log.i(TAG, "speakStream: flushing remaining '${remaining.take(40)}'")
-                    sentenceChannel.send(remaining)
+                val reply = accumulator.toString()
+                if (reply.isNotBlank()) {
+                    chatSession.appendAssistantReply(reply)
                 }
-                sentenceChannel.close()
+                _state.update { it.copy(assistantReply = reply) }
             }
-
-            val reply = accumulator.toString()
-            if (reply.isNotBlank()) {
-                chatSession.appendAssistantReply(reply)
-            }
-            _state.update { it.copy(assistantReply = reply) }
-
-            synthJob.join()
-            playerJob.join()
         }
     }
 

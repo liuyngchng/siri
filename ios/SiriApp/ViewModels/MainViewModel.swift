@@ -59,6 +59,9 @@ class MainViewModel: ObservableObject {
             for: .documentDirectory, in: .userDomainMask
         )[0]
 
+        // Load TTS preference
+        state.ttsEnabled = UserDefaults.standard.object(forKey: "tts_enabled") as? Bool ?? true
+
         // Observe chat messages
         chatSession.$messages
             .receive(on: DispatchQueue.main)
@@ -283,22 +286,25 @@ class MainViewModel: ObservableObject {
         // TTS "哎，我在呢" then auto-start listening
         Task { @MainActor [weak self] in
             guard let self = self else { return }
-            self.state.voiceState = .speaking
 
-            // Switch from KWS voiceChat mode to default playback mode for full volume
-            AudioSessionManager.configure()
+            if self.state.ttsEnabled {
+                self.state.voiceState = .speaking
 
-            if let pcm = await Task.detached(priority: .userInitiated, operation: {
-                await self.ttsEngine.synthesize(text: "哎，我在呢", speed: 1.0)
-            }).value {
-                await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
-                    let sr = Double(self.ttsEngine.sampleRate)
-                    self.audioPlayer.play(pcmFloats: pcm, sampleRate: sr) {
-                        cont.resume()
+                // Switch from KWS voiceChat mode to default playback mode for full volume
+                AudioSessionManager.configure()
+
+                if let pcm = await Task.detached(priority: .userInitiated, operation: {
+                    await self.ttsEngine.synthesize(text: "哎，我在呢", speed: 1.0)
+                }).value {
+                    await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+                        let sr = Double(self.ttsEngine.sampleRate)
+                        self.audioPlayer.play(pcmFloats: pcm, sampleRate: sr) {
+                            cont.resume()
+                        }
                     }
+                    // Release player engine before starting AudioRecorder
+                    self.audioPlayer.stop()
                 }
-                // Release player engine before starting AudioRecorder
-                self.audioPlayer.stop()
             }
 
             self.startListening()
@@ -345,6 +351,14 @@ class MainViewModel: ObservableObject {
             state.voiceState = .idle
         }
         return hasConfig
+    }
+
+    func toggleTts(_ enable: Bool) {
+        state.ttsEnabled = enable
+        UserDefaults.standard.set(enable, forKey: "tts_enabled")
+        if !enable {
+            stopSpeaking()
+        }
     }
 
     // MARK: - Recording
@@ -578,7 +592,11 @@ class MainViewModel: ObservableObject {
                             } else {
                                 self?.chatSession.appendAssistantReply(fullReply)
                                 self?.state.assistantReply = fullReply
-                                self?.speakText(fullReply)
+                                if self?.state.ttsEnabled == true {
+                                    self?.speakText(fullReply)
+                                } else {
+                                    self?.finishSpeakingOrMultiTurn()
+                                }
                             }
                         }
                         continuation.resume()
@@ -599,6 +617,10 @@ class MainViewModel: ObservableObject {
     // MARK: - TTS + Playback
 
     func speakText(_ text: String) {
+        guard state.ttsEnabled else {
+            state.voiceState = .idle
+            return
+        }
         speakingTask?.cancel()
         audioPlayer.stop()
 

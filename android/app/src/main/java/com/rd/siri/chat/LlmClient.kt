@@ -24,7 +24,8 @@ class LlmClient(private val configRepository: ConfigRepository) {
     companion object {
         private fun buildSystemPrompt(enableSearch: Boolean): String {
             val now = java.text.SimpleDateFormat("yyyy年M月d日 EEEE", java.util.Locale.CHINESE).format(java.util.Date())
-            val base = "你是安卓语音助手，请用简洁的口语化中文回答，回答控制在100字以内。" +
+            val base = "你是一个信息查询助手。请用简洁的中文直接回答用户的问题，控制在100字以内。" +
+                "不要问候、不要寒暄、不要闲聊，只输出问答结果。" +
                 "当前日期是$now。"
             return if (enableSearch) {
                 base + "你已启用联网搜索，获取到的实时信息会直接提供给你。" +

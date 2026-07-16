@@ -15,6 +15,7 @@ class ConfigRepository(context: Context) {
         private const val KEY_API_KEY = "api_key"
         private const val KEY_ENABLE_SEARCH = "enable_search"
         private const val KEY_SEARCH_PARAM_NAME = "search_param_name"
+        private const val KEY_TTS_ENABLED = "tts_enabled"
     }
 
     private val prefs = run {
@@ -49,6 +50,12 @@ class ConfigRepository(context: Context) {
             .putBoolean(KEY_ENABLE_SEARCH, config.enableSearch)
             .putString(KEY_SEARCH_PARAM_NAME, config.searchParamName)
             .apply()
+    }
+
+    fun isTtsEnabled(): Boolean = prefs.getBoolean(KEY_TTS_ENABLED, true)
+
+    fun setTtsEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_TTS_ENABLED, enabled).apply()
     }
 
     fun clearConfig() {
