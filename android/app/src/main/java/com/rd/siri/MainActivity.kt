@@ -59,10 +59,6 @@ class MainActivity : ComponentActivity() {
                                 showSettings = false
                                 mainViewModel.checkConfig()
                             },
-                            wakeWordEnabled = appState.wakeWordEnabled,
-                            onToggleWakeWord = { enable ->
-                                mainViewModel.toggleWakeWord(enable)
-                            },
                             ttsEnabled = appState.ttsEnabled,
                             onToggleTts = { enable ->
                                 mainViewModel.toggleTts(enable)

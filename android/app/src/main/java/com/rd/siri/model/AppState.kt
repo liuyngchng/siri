@@ -17,7 +17,6 @@ data class AppState(
     val finalAsrText: String = "",
     val assistantReply: String = "",
     val hasConfig: Boolean = false,
-    val wakeWordEnabled: Boolean = false,
     val ttsEnabled: Boolean = true,
     val connectionTestResult: String? = null
 )

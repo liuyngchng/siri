@@ -83,6 +83,20 @@ class ChatSession(
         appendToContext(assistantMsg)
     }
 
+    /** Remove the last user message from both screen and context buffer.
+     *  Used when a recording is cancelled before the LLM reply arrives,
+     *  so the orphaned user message does not affect the next conversation. */
+    fun clearLastUserMessage() {
+        val screenMsgs = _messages.value.toMutableList()
+        if (screenMsgs.isNotEmpty() && screenMsgs.last().role == ChatMessage.Role.USER) {
+            screenMsgs.removeLast()
+            _messages.value = screenMsgs
+        }
+        if (contextBuffer.isNotEmpty() && contextBuffer.last().role == ChatMessage.Role.USER) {
+            contextBuffer.removeLast()
+        }
+    }
+
     /** Full clear — both screen and LLM context (user-initiated). */
     fun clear() {
         _messages.value = emptyList()

@@ -54,7 +54,7 @@ class SiriApp : Application() {
         }
         nativeLibrariesLoaded = allLoaded
         if (!allLoaded) {
-            Log.e(TAG, "One or more native libraries failed to load — ASR/TTS/KWS will be unavailable")
+            Log.e(TAG, "One or more native libraries failed to load — ASR/TTS will be unavailable")
         }
     }
 

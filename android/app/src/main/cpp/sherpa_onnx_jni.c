@@ -187,6 +187,18 @@ Java_com_rd_siri_asr_SherpaAsrEngine_nativeDestroyRecognizer(
     LOGI("ASR: Recognizer destroyed");
 }
 
+// ── ASR: Reset (clear buffered samples without decoding) ────────────────────
+
+JNIEXPORT void JNICALL
+Java_com_rd_siri_asr_SherpaAsrEngine_nativeReset(
+    JNIEnv *env, jclass clazz, jlong ptr) {
+
+    if (ptr == 0) return;
+    RecognizerState *state = (RecognizerState *)(intptr_t)ptr;
+    state->buffer_len = 0;
+    LOGI("ASR: Buffer reset");
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TTS: Matcha-TTS
 // ═══════════════════════════════════════════════════════════════════════════

@@ -4,9 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -17,7 +14,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Hearing
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
@@ -30,19 +26,19 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathFillType
-
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.CancellationException
 import com.rd.siri.model.AppState
 import com.rd.siri.model.ChatMessage
 import com.rd.siri.model.VoiceState
@@ -113,36 +109,12 @@ fun MainScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Column {
-                        Text("语音助手")
-                        if (state.wakeWordEnabled) {
-                            Text(
-                                "语音唤醒中",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                },
+                title = { Text("语音助手") },
                 actions = {
                     if (messages.isNotEmpty()) {
                         IconButton(onClick = { showClearDialog = true }) {
                             Icon(Icons.Filled.Delete, contentDescription = "清除历史")
                         }
-                    }
-                    // Wake word toggle — matches iOS ear icon
-                    IconButton(onClick = {
-                        viewModel.toggleWakeWord(!viewModel.isWakeWordEnabled())
-                    }) {
-                        Icon(
-                            imageVector = Icons.Filled.Hearing,
-                            contentDescription = if (state.wakeWordEnabled) "关闭语音唤醒" else "开启语音唤醒",
-                            tint = if (state.wakeWordEnabled)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(Icons.Filled.Settings, contentDescription = "设置")
@@ -337,7 +309,7 @@ private fun IdleState() {
                 color = MaterialTheme.colorScheme.onBackground
             )
             Text(
-                "轻点麦克风按钮开始说话",
+                "按住按钮开始说话",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
@@ -352,7 +324,7 @@ private fun LoadingState(message: String) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        PulseRing(size = 48.dp, strokeWidth = 3.dp)
+        CircularProgressIndicator(modifier = Modifier.size(48.dp))
         Text(
             message,
             style = MaterialTheme.typography.bodyMedium,
@@ -423,7 +395,6 @@ private fun isCloseToPrevious(index: Int, messages: List<ChatMessage>): Boolean 
 
 // MARK: - Message Bubble
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
 private fun MessageBubble(
     message: ChatMessage,
@@ -435,10 +406,6 @@ private fun MessageBubble(
     val isUser = message.role == ChatMessage.Role.USER
     val bubbleMaxWidth = minOf(availableWidth * BubbleMaxWidthFraction, BubbleMaxWidthCap)
 
-    // Entrance animation
-    var appeared by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { appeared = true }
-
     val bottomSpacing = if (isCloseToPrevious) SameSenderSpacing else DifferentSenderSpacing
     val topSpacing = if (isFirst) 8.dp else 0.dp
 
@@ -448,38 +415,31 @@ private fun MessageBubble(
             .padding(top = topSpacing, bottom = bottomSpacing),
         contentAlignment = if (isUser) Alignment.CenterEnd else Alignment.CenterStart
     ) {
-        AnimatedVisibility(
-            visible = appeared,
-            enter = fadeIn(animationSpec = spring(dampingRatio = 0.85f)) +
-                scaleIn(initialScale = 0.92f, animationSpec = spring(dampingRatio = 0.85f))
-        ) {
-            Surface(
-                shape = RoundedCornerShape(BubbleCornerRadius),
-                color = if (isUser) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.surfaceVariant,
-                tonalElevation = if (isUser) 0.dp else 1.dp,
-                modifier = Modifier
-                    .widthIn(max = bubbleMaxWidth)
-                    .then(
-                        if (onLongPress != null) {
-                            Modifier.pointerInput(message.content) {
-                                detectTapGestures(onLongPress = { onLongPress() })
-                            }
-                        } else Modifier
-                    )
-            ) {
-                Text(
-                    text = message.content,
-                    modifier = Modifier.padding(
-                        horizontal = BubbleTextHPadding,
-                        vertical = BubbleTextVPadding
-                    ),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (isUser) MaterialTheme.colorScheme.onPrimary
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = if (isUser) TextAlign.End else TextAlign.Start
+        Surface(
+            shape = RoundedCornerShape(BubbleCornerRadius),
+            color = if (isUser) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.surfaceVariant,
+            modifier = Modifier
+                .widthIn(max = bubbleMaxWidth)
+                .then(
+                    if (onLongPress != null) {
+                        Modifier.pointerInput(message.content) {
+                            detectTapGestures(onLongPress = { onLongPress() })
+                        }
+                    } else Modifier
                 )
-            }
+        ) {
+            Text(
+                text = message.content,
+                modifier = Modifier.padding(
+                    horizontal = BubbleTextHPadding,
+                    vertical = BubbleTextVPadding
+                ),
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (isUser) MaterialTheme.colorScheme.onPrimary
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = if (isUser) TextAlign.End else TextAlign.Start
+            )
         }
     }
 }
@@ -488,55 +448,28 @@ private fun MessageBubble(
 
 @Composable
 private fun ThinkingIndicator() {
-    val infiniteTransition = rememberInfiniteTransition()
-    val dotCount = 3
-
     Surface(
         shape = RoundedCornerShape(12.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
-        tonalElevation = 1.dp,
         modifier = Modifier.padding(bottom = 8.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            PulseRing(size = 14.dp, strokeWidth = 2.dp)
-
-            Text(
-                "思考中",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            // Animated dots
-            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                for (i in 0 until dotCount) {
-                    val alpha by infiniteTransition.animateFloat(
-                        initialValue = if (i == 0) 1f else 0.25f,
-                        targetValue = if (i == 0) 0.25f else 1f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(400, delayMillis = i * 150),
-                            repeatMode = RepeatMode.Restart
-                        )
-                    )
-                    Box(
-                        modifier = Modifier
-                            .size(4.dp)
-                            .clip(CircleShape)
-                            .background(
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                                    .copy(alpha = alpha)
-                            )
-                    )
-                }
-            }
-        }
+        Text(
+            "思考中…",
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
-// MARK: - Mic Button
+// MARK: - Press-to-Speak Button
+//
+// A voice input button following Android press-and-hold UX best practices:
+// - Idle: large pill button with "按住说话" label, press & hold to start recording
+// - Recording: same pill, filled primary color, "松开结束" label + pulse ring
+// - Release: auto-chains through ASR → LLM → TTS
+// - Swipe away from button while holding: cancels recording
+// - Processing/Speaking: compact round icon button to cancel or stop
 
 @Composable
 private fun MicButton(
@@ -548,194 +481,175 @@ private fun MicButton(
     onStopSpeaking: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
+    var isPressed by remember { mutableStateOf(false) }
+
+    // Keep a stable reference so the pointerInput coroutine always sees the latest state
+    val currentVoiceState by rememberUpdatedState(voiceState)
+
+    val isIdle = voiceState is VoiceState.Idle
+        || voiceState is VoiceState.Error
+        || voiceState is VoiceState.Loading
     val isListening = voiceState is VoiceState.Listening
     val isProcessing = voiceState is VoiceState.Recognizing
         || voiceState is VoiceState.Thinking
     val isSpeaking = voiceState is VoiceState.Speaking
-    val isActive = isListening || isProcessing
 
-    val statusHint = when {
-        isListening -> "轻点停止"
-        isProcessing -> "轻点取消"
+    // ---- Visual state ----
+    val buttonBg = when {
+        !enabled -> MaterialTheme.colorScheme.surfaceVariant
+        isSpeaking -> MaterialTheme.colorScheme.error
+        isProcessing -> Color(0xFFFFA500)
+        isPressed || isListening -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+
+    val contentColor = when {
+        !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+        isSpeaking -> MaterialTheme.colorScheme.onError
+        isProcessing -> Color.White
+        isPressed || isListening -> MaterialTheme.colorScheme.onPrimary
+        else -> MaterialTheme.colorScheme.primary
+    }
+
+    val hint = when {
+        isPressed || isListening -> "松开结束"
         isSpeaking -> "轻点停止播报"
         else -> ""
     }
 
-    val buttonBg = when {
-        isSpeaking -> MaterialTheme.colorScheme.error
-        isProcessing -> Color(0xFFFFA500)
-        isActive -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.surfaceVariant
-    }
-
-    val iconTint = when {
-        isSpeaking -> MaterialTheme.colorScheme.onError
-        isProcessing -> Color.White
-        isActive -> MaterialTheme.colorScheme.onPrimary
-        else -> MaterialTheme.colorScheme.primary
-    }
-
-    val iconVector = when {
-        isProcessing -> Icons.Filled.Stop
-        isActive || isSpeaking -> Icons.Filled.Stop
-        else -> Icons.Filled.Mic
-    }
-
-    val contentDescription = when {
-        isListening -> "停止录音"
-        isProcessing -> "取消"
-        isSpeaking -> "停止播报"
-        else -> "开始录音"
-    }
-
-    val showPulse = isActive || isSpeaking
-    val pulseColor = when {
-        isSpeaking -> MaterialTheme.colorScheme.error
-        isProcessing -> Color(0xFFFFA500)
-        else -> MaterialTheme.colorScheme.primary
-    }
-
-    // Skip the first few frames to avoid GPU circle-tessellation artifacts
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        withFrameNanos { }
-        withFrameNanos { }
-        visible = true
-    }
-    val buttonAlpha by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(200)
-    )
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .alpha(buttonAlpha),
+            .then(if (!enabled) Modifier.alpha(0.5f) else Modifier),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Status hint
-        Box(
-            modifier = Modifier
-                .background(
-                    if (statusHint.isNotEmpty())
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                    else Color.Transparent,
-                    RoundedCornerShape(50)
-                )
-                .padding(horizontal = 14.dp, vertical = 6.dp)
-        ) {
-            Text(
-                text = statusHint,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-            )
-        }
-
-        // Button with pulse ring — simple tap-to-toggle
-        Box(contentAlignment = Alignment.Center) {
-            if (showPulse) {
-                PulseRing(
-                    color = pulseColor,
-                    size = 108.dp,
-                    strokeWidth = 3.dp
-                )
-            }
-
-            FilledIconButton(
-                enabled = enabled,
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    when {
-                        isSpeaking -> onStopSpeaking()
-                        isProcessing -> onPressCancel()
-                        isListening -> onPressEnd()
-                        else -> onPressStart()
-                    }
-                },
-                modifier = Modifier
-                    .size(72.dp)
-                    .shadow(
-                        elevation = if (isActive || isSpeaking) 0.dp else 4.dp,
-                        shape = CircleShape
-                    ),
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = buttonBg
-                )
+        // Status hint chip
+        if (hint.isNotEmpty()) {
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Icon(
-                    imageVector = iconVector,
-                    contentDescription = contentDescription,
-                    modifier = Modifier.size(28.dp),
-                    tint = iconTint
+                Text(
+                    text = hint,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
             }
         }
-    }
-}
 
-// MARK: - Pulse Ring (with color override)
+        Box(contentAlignment = Alignment.Center) {
+            if (isIdle || isListening || isPressed) {
+                // ============================================================
+                // Press-and-Hold Voice Button (idle / recording states)
+                // ============================================================
+                val pressLabel = when {
+                    isPressed || isListening -> "松开结束"
+                    else -> "按住说话"
+                }
+                val contentDesc = when {
+                    isPressed || isListening -> "松开结束录音"
+                    else -> "按住开始录音"
+                }
 
-@Composable
-private fun PulseRing(
-    size: Dp,
-    strokeWidth: Dp,
-    color: Color = MaterialTheme.colorScheme.primary
-) {
-    val infiniteTransition = rememberInfiniteTransition()
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 0.7f,
-        targetValue = 1.3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        )
-    )
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0.15f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        )
-    )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(buttonBg)
+                        .shadow(
+                            elevation = if (isPressed || isListening) 0.dp else 4.dp,
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .then(
+                            if (enabled) {
+                                // Pointer-input kept alive as long as the button is
+                                // enabled, so the gesture survives the Idle→Listening
+                                // transition triggered by onPressStart().
+                                Modifier.pointerInput(enabled) {
+                                    detectTapGestures(
+                                        onPress = {
+                                            val vs = currentVoiceState
+                                            val shouldStart = vs is VoiceState.Idle
+                                                || vs is VoiceState.Error
+                                            if (shouldStart) {
+                                                isPressed = true
+                                                haptic.performHapticFeedback(
+                                                    HapticFeedbackType.LongPress
+                                                )
+                                                onPressStart()
+                                            }
 
-    Canvas(modifier = Modifier.size(size)) {
-        val canvasSizePx = size.toPx()
-        val radiusPx = canvasSizePx / 2f
-        val strokePx = strokeWidth.toPx() * scale
-        // Build a filled ring as two concentric circle paths with EvenOdd fill.
-        // This avoids drawCircle + Stroke tessellation artifacts on Mali GPUs.
-        val ringPath = Path().apply {
-            fillType = PathFillType.EvenOdd
-            addPath(circlePath(radiusPx, canvasSizePx))
-            addPath(circlePath((radiusPx - strokePx).coerceAtLeast(0f), canvasSizePx))
+                                            val released = try {
+                                                tryAwaitRelease()
+                                            } catch (_: CancellationException) {
+                                                false
+                                            } finally {
+                                                isPressed = false
+                                            }
+
+                                            if (shouldStart) {
+                                                if (released) onPressEnd()
+                                                else onPressCancel()
+                                            }
+                                        }
+                                    )
+                                }
+                            } else Modifier
+                        )
+                        .padding(horizontal = 40.dp, vertical = 16.dp)
+                        .semantics { contentDescription = contentDesc },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.Mic,
+                            contentDescription = null,
+                            tint = contentColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text(
+                            text = pressLabel,
+                            color = contentColor,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            } else {
+                // ============================================================
+                // Cancel / Stop Button (processing or speaking states)
+                // ============================================================
+                val iconDesc = if (isSpeaking) "停止播报" else "取消"
+                FilledIconButton(
+                    enabled = enabled,
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        when {
+                            isSpeaking -> onStopSpeaking()
+                            isProcessing -> onPressCancel()
+                            else -> {}
+                        }
+                    },
+                    modifier = Modifier
+                        .size(72.dp)
+                        .shadow(elevation = 4.dp, shape = CircleShape),
+                    colors = IconButtonDefaults.filledIconButtonColors(
+                        containerColor = buttonBg
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Stop,
+                        contentDescription = iconDesc,
+                        modifier = Modifier.size(28.dp),
+                        tint = contentColor
+                    )
+                }
+            }
         }
-        drawPath(
-            path = ringPath,
-            color = color.copy(alpha = alpha)
-        )
-    }
-}
-
-/**
- * Returns a smooth circle path with enough vertices to avoid visible polygon
- * edges on GPUs that use coarse circle tessellation (e.g. Mali on Huawei).
- */
-private fun circlePath(radius: Float, canvasSizePx: Float): Path {
-    val center = canvasSizePx / 2f
-    val segments = maxOf(256, (Math.PI * 2.0 * radius / 1.5).toInt().coerceAtMost(720))
-    val angleStep = (Math.PI * 2.0) / segments
-    return Path().apply {
-        moveTo(center + radius, center)
-        for (i in 1 until segments) {
-            val a = i * angleStep
-            lineTo(
-                (center + radius * Math.cos(a)).toFloat(),
-                (center + radius * Math.sin(a)).toFloat()
-            )
-        }
-        close()
     }
 }

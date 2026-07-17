@@ -67,6 +67,13 @@ class SherpaAsrEngine(private val context: Context) {
     val isReady: Boolean
         get() = isInitialized
 
+    /** Clear buffered samples without decoding. Call before starting a new
+     *  recording to discard any stale samples from a cancelled session. */
+    fun reset() {
+        if (!isInitialized) return
+        nativeReset(statePtr)
+    }
+
     fun destroy() {
         if (isInitialized) {
             nativeDestroyRecognizer(statePtr)
@@ -88,6 +95,8 @@ class SherpaAsrEngine(private val context: Context) {
     private external fun nativeGetText(ptr: Long): String
 
     private external fun nativeInputFinished(ptr: Long): String
+
+    private external fun nativeReset(ptr: Long)
 
     private external fun nativeDestroyRecognizer(ptr: Long)
 }

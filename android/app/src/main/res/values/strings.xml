@@ -15,9 +15,4 @@
     <string name="config_required">请先在设置中配置 API 信息</string>
     <string name="voice_channel">语音服务</string>
     <string name="voice_listening_notification">正在语音聆听中…</string>
-    <string name="wake_word_title">语音唤醒</string>
-    <string name="wake_word_description">通过\"小瑞小瑞\"唤醒语音助手</string>
-    <string name="wake_word_listening_title">语音唤醒已开启</string>
-    <string name="wake_word_listening_text">说出\"小瑞小瑞\"唤醒我</string>
-    <string name="wake_word_setting_subtitle">说\"小瑞小瑞\"即可唤醒，无需手动操作</string>
 </resources>

@@ -41,19 +41,13 @@ fun ModelSetupScreen(
     val asrReady = ModelManager.checkAsrReady(context)
     val ttsTarReady = ModelManager.checkTtsExtracted(context)
     val vocoderReady = ModelManager.checkVocoderReady(context)
-    val kwsReady = ModelManager.checkKwsReady(context)
-
     var asrOk by remember { mutableStateOf(asrReady) }
     var ttsTarOk by remember { mutableStateOf(ttsTarReady) }
     var vocoderOk by remember { mutableStateOf(vocoderReady) }
-    var kwsOk by remember { mutableStateOf(kwsReady) }
-
     var asrSlot by remember { mutableStateOf(SlotState()) }
     var ttsSlot by remember { mutableStateOf(SlotState()) }
     var vocoderSlot by remember { mutableStateOf(SlotState()) }
-    var kwsSlot by remember { mutableStateOf(SlotState()) }
-
-    val anyExtracting = asrSlot.extracting || ttsSlot.extracting || vocoderSlot.extracting || kwsSlot.extracting
+    val anyExtracting = asrSlot.extracting || ttsSlot.extracting || vocoderSlot.extracting
     val ttsOk = ttsTarOk && vocoderOk
     val allReady = asrOk && ttsOk
 
@@ -117,26 +111,6 @@ fun ModelSetupScreen(
         }
     }
 
-    // ---- KWS picker ----
-    val kwsPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        uri?.let {
-            scope.launch {
-                kwsSlot = SlotState(extracting = true)
-                val result = withContext(Dispatchers.IO) {
-                    ModelManager.extractTar(context, it, ModelManager.KWS_MODEL_DIR) { p ->
-                        kwsSlot = SlotState(extracting = true, progress = p)
-                    }
-                }
-                result.fold(
-                    onSuccess = { kwsOk = ModelManager.checkKwsReady(context); kwsSlot = SlotState() },
-                    onFailure = { e -> kwsSlot = SlotState(error = "解压失败: ${e.message}") }
-                )
-            }
-        }
-    }
-
     // ---- Download handlers ----
     fun downloadAsr() {
         scope.launch {
@@ -179,21 +153,6 @@ fun ModelSetupScreen(
             result.fold(
                 onSuccess = { vocoderOk = ModelManager.checkVocoderReady(context); vocoderSlot = SlotState() },
                 onFailure = { e -> vocoderSlot = SlotState(error = "下载失败: ${e.message}") }
-            )
-        }
-    }
-
-    fun downloadKws() {
-        scope.launch {
-            kwsSlot = SlotState(extracting = true)
-            val result = withContext(Dispatchers.IO) {
-                ModelManager.downloadAndExtractKws(context) { p ->
-                    kwsSlot = SlotState(extracting = true, progress = p)
-                }
-            }
-            result.fold(
-                onSuccess = { kwsOk = ModelManager.checkKwsReady(context); kwsSlot = SlotState() },
-                onFailure = { e -> kwsSlot = SlotState(error = "下载失败: ${e.message}") }
             )
         }
     }
@@ -274,27 +233,6 @@ fun ModelSetupScreen(
                 slot = vocoderSlot,
                 onSelect = { vocoderPicker.launch(arrayOf("application/octet-stream", "*/*")) },
                 onDownload = { downloadVocoder() }
-            )
-
-            // Section: 可选 — KWS 唤醒词模型
-            Text(
-                "可选：语音唤醒",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-            Text(
-                "启用\"小瑞小瑞\"语音唤醒所需的模型（~13MB）",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            ModelSlotCard(
-                label = "KWS 唤醒词模型",
-                isReady = kwsOk,
-                slot = kwsSlot,
-                onSelect = { kwsPicker.launch(arrayOf("application/x-tar", "application/octet-stream")) },
-                onDownload = { downloadKws() }
             )
 
             // Start button (only in first-run wizard mode)

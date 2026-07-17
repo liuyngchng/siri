@@ -191,7 +191,6 @@ struct MainScreen: View {
                     }
                     .accessibilityLabel("清除历史")
                 }
-                wakeWordToggle
                 Button(action: onNavigateToSettings) {
                     Image(systemName: "gearshape")
                         .font(.system(size: 18, weight: .medium))
@@ -199,21 +198,6 @@ struct MainScreen: View {
                 .accessibilityLabel("设置")
             }
         }
-    }
-
-    @ViewBuilder
-    private var wakeWordToggle: some View {
-        Button(action: {
-            let newValue = !viewModel.state.wakeWordEnabled
-            viewModel.toggleWakeWord(newValue)
-        }) {
-            Image(systemName: viewModel.state.wakeWordEnabled
-                  ? "ear.fill"
-                  : "ear")
-                .font(.system(size: 18, weight: .medium))
-                .foregroundColor(viewModel.state.wakeWordEnabled ? .blue : .primary)
-        }
-        .accessibilityLabel(viewModel.state.wakeWordEnabled ? "关闭语音唤醒" : "开启语音唤醒")
     }
 
     // MARK: - Alert
