@@ -40,12 +40,6 @@ struct ChatInputBar: View {
             BlurView(style: .systemMaterial)
                 .edgesIgnoringSafeArea(.bottom)
         )
-        .onChange(of: voiceState) { state in
-            // Auto-switch back to text mode after a completed voice interaction
-            if case .idle = state {
-                isVoiceMode = false
-            }
-        }
     }
 
     // MARK: - Text Mode
