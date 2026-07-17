@@ -10,10 +10,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -26,6 +29,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -224,23 +228,126 @@ fun MainScreen(
                 }
             }
 
-            // Mic button bar
-            MicButton(
-                voiceState = state.voiceState,
-                enabled = state.enginesReady,
-                onPressStart = {
-                    viewModel.checkConfig()
-                    viewModel.startListening()
-                },
-                onPressEnd = {
-                    if (state.voiceState is VoiceState.Listening) {
-                        viewModel.stopListening()
-                    }
-                },
-                onPressCancel = { viewModel.cancelListening() }
-            )
+            // ---- Input Mode State ----
+            var isVoiceMode by remember { mutableStateOf(false) }
+            var textDraft by remember { mutableStateOf("") }
+            val focusManager = LocalFocusManager.current
 
-            Spacer(modifier = Modifier.height(32.dp))
+            // ---- Input Bar ----
+            val isTextFieldEnabled = when (state.voiceState) {
+                is VoiceState.Listening, is VoiceState.Recognizing,
+                is VoiceState.Thinking, is VoiceState.Speaking -> false
+                else -> true
+            }
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shadowElevation = 6.dp,
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                if (isVoiceMode) {
+                    // ============================================================
+                    // Voice Mode: keyboard toggle + press-and-hold mic button
+                    // ============================================================
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { isVoiceMode = false }) {
+                            Icon(
+                                Icons.Filled.Keyboard,
+                                contentDescription = "切换到文字输入",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Box(modifier = Modifier.weight(1f)) {
+                            MicButton(
+                                voiceState = state.voiceState,
+                                enabled = state.enginesReady,
+                                onPressStart = {
+                                    viewModel.checkConfig()
+                                    viewModel.startListening()
+                                },
+                                onPressEnd = {
+                                    if (state.voiceState is VoiceState.Listening) {
+                                        viewModel.stopListening()
+                                    }
+                                },
+                                onPressCancel = { viewModel.cancelListening() }
+                            )
+                        }
+
+                        // Invisible spacer to balance the keyboard button
+                        Spacer(modifier = Modifier.width(48.dp))
+                    }
+                } else {
+                    // ============================================================
+                    // Text Mode: text field + send/mic button
+                    // ============================================================
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = textDraft,
+                            onValueChange = { textDraft = it },
+                            placeholder = { Text("输入消息…") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            enabled = isTextFieldEnabled,
+                            shape = RoundedCornerShape(24.dp)
+                        )
+
+                        val trimmed = textDraft.trim()
+                        if (trimmed.isNotEmpty()) {
+                            // Send button
+                            IconButton(
+                                onClick = {
+                                    viewModel.sendTextMessage(trimmed)
+                                    textDraft = ""
+                                },
+                                enabled = state.enginesReady && isTextFieldEnabled,
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.primary,
+                                        CircleShape
+                                    )
+                            ) {
+                                Icon(
+                                    Icons.Filled.Send,
+                                    contentDescription = "发送消息",
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        } else {
+                            // Mic toggle — switch to voice mode
+                            IconButton(
+                                onClick = {
+                                    focusManager.clearFocus()
+                                    isVoiceMode = true
+                                },
+                                enabled = state.enginesReady
+                            ) {
+                                Icon(
+                                    Icons.Filled.Mic,
+                                    contentDescription = "切换到语音输入",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 

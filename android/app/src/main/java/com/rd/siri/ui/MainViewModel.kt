@@ -380,6 +380,47 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         stopSpeaking()
     }
 
+    fun sendTextMessage(text: String) {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return
+
+        if (!configRepository.hasConfig) {
+            _state.update { it.copy(voiceState = VoiceState.Error("请先在设置中配置 API 信息")) }
+            return
+        }
+
+        // Cancel everything in flight
+        cancelAllTasks()
+
+        Log.i(TAG, "sendTextMessage: sending text='${trimmed.take(80)}'")
+        _state.update { it.copy(voiceState = VoiceState.Thinking) }
+
+        processingJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val result = chatSession.sendStream(trimmed)
+                result.onSuccess { flow ->
+                    streamingJob = viewModelScope.launch {
+                        val fullReply = StringBuilder()
+                        try {
+                            speakStream(flow, fullReply)
+                        } catch (e: CancellationException) {
+                            // Expected when user cancels
+                        } catch (e: Exception) {
+                            Log.e(TAG, "sendTextMessage: stream TTS failed", e)
+                        }
+                        Log.i(TAG, "sendTextMessage: LLM reply complete, len=${fullReply.length}")
+                        _state.update { it.copy(voiceState = VoiceState.Idle) }
+                    }
+                }.onFailure { e ->
+                    Log.e(TAG, "sendTextMessage: LLM request failed", e)
+                    _state.update { it.copy(voiceState = VoiceState.Error("请求失败: ${e.message}")) }
+                }
+            } finally {
+                processingJob = null
+            }
+        }
+    }
+
     fun cancelListening() {
         Log.i(TAG, "cancelListening called")
         audioRecorder.stopRecording()
