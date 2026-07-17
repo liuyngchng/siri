@@ -383,10 +383,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun cancelListening() {
         Log.i(TAG, "cancelListening called")
         audioRecorder.stopRecording()
+        audioPlayer.stop()
         recordingJob?.cancel()
         recordingJob = null
         processingJob?.cancel()
         processingJob = null
+        speakingJob?.cancel()
+        speakingJob = null
+        streamingJob?.cancel()
+        streamingJob = null
         asrEngine.reset()
         _state.update { it.copy(voiceState = VoiceState.Idle, partialAsrText = "") }
     }

@@ -55,7 +55,7 @@ class ChatSession(
         }.onFailure {
             // Rollback both buffers on failure
             _messages.value = _messages.value.dropLast(1)
-            contextBuffer.removeLast()
+            contextBuffer.removeAt(contextBuffer.lastIndex)
         }
 
         return result
@@ -71,7 +71,7 @@ class ChatSession(
             Result.success(flow)
         } catch (e: Exception) {
             _messages.value = _messages.value.dropLast(1)
-            contextBuffer.removeLast()
+            contextBuffer.removeAt(contextBuffer.lastIndex)
             Result.failure(e)
         }
     }
@@ -89,11 +89,11 @@ class ChatSession(
     fun clearLastUserMessage() {
         val screenMsgs = _messages.value.toMutableList()
         if (screenMsgs.isNotEmpty() && screenMsgs.last().role == ChatMessage.Role.USER) {
-            screenMsgs.removeLast()
+            screenMsgs.removeAt(screenMsgs.lastIndex)
             _messages.value = screenMsgs
         }
         if (contextBuffer.isNotEmpty() && contextBuffer.last().role == ChatMessage.Role.USER) {
-            contextBuffer.removeLast()
+            contextBuffer.removeAt(contextBuffer.lastIndex)
         }
     }
 

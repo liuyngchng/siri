@@ -10,22 +10,18 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
@@ -241,8 +237,7 @@ fun MainScreen(
                         viewModel.stopListening()
                     }
                 },
-                onPressCancel = { viewModel.cancelListening() },
-                onStopSpeaking = { viewModel.finishSpeaking() }
+                onPressCancel = { viewModel.cancelListening() }
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -477,8 +472,7 @@ private fun MicButton(
     enabled: Boolean,
     onPressStart: () -> Unit,
     onPressEnd: () -> Unit,
-    onPressCancel: () -> Unit,
-    onStopSpeaking: () -> Unit
+    onPressCancel: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
     var isPressed by remember { mutableStateOf(false) }
@@ -497,24 +491,14 @@ private fun MicButton(
     // ---- Visual state ----
     val buttonBg = when {
         !enabled -> MaterialTheme.colorScheme.surfaceVariant
-        isSpeaking -> MaterialTheme.colorScheme.error
-        isProcessing -> Color(0xFFFFA500)
         isPressed || isListening -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
 
     val contentColor = when {
         !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-        isSpeaking -> MaterialTheme.colorScheme.onError
-        isProcessing -> Color.White
         isPressed || isListening -> MaterialTheme.colorScheme.onPrimary
-        else -> MaterialTheme.colorScheme.primary
-    }
-
-    val hint = when {
-        isPressed || isListening -> "松开结束"
-        isSpeaking -> "轻点停止播报"
-        else -> ""
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     Column(
@@ -524,24 +508,8 @@ private fun MicButton(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Status hint chip
-        if (hint.isNotEmpty()) {
-            Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text(
-                    text = hint,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                )
-            }
-        }
-
         Box(contentAlignment = Alignment.Center) {
-            if (isIdle || isListening || isPressed) {
+            if (isIdle || isListening || isPressed || isProcessing || isSpeaking) {
                 // ============================================================
                 // Press-and-Hold Voice Button (idle / recording states)
                 // ============================================================
@@ -556,12 +524,12 @@ private fun MicButton(
 
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(buttonBg)
                         .shadow(
                             elevation = if (isPressed || isListening) 0.dp else 4.dp,
-                            shape = RoundedCornerShape(16.dp)
+                            shape = RoundedCornerShape(16.dp),
+                            clip = false
                         )
+                        .background(buttonBg, RoundedCornerShape(16.dp))
                         .then(
                             if (enabled) {
                                 // Pointer-input kept alive as long as the button is
@@ -571,15 +539,22 @@ private fun MicButton(
                                     detectTapGestures(
                                         onPress = {
                                             val vs = currentVoiceState
-                                            val shouldStart = vs is VoiceState.Idle
-                                                || vs is VoiceState.Error
-                                            if (shouldStart) {
-                                                isPressed = true
-                                                haptic.performHapticFeedback(
-                                                    HapticFeedbackType.LongPress
-                                                )
-                                                onPressStart()
+
+                                            isPressed = true
+                                            haptic.performHapticFeedback(
+                                                HapticFeedbackType.LongPress
+                                            )
+
+                                            // If any pipeline is in progress, cancel it first
+                                            if (vs !is VoiceState.Idle
+                                                && vs !is VoiceState.Error
+                                                && vs !is VoiceState.Loading
+                                            ) {
+                                                onPressCancel()
                                             }
+
+                                            // Start recording
+                                            onPressStart()
 
                                             val released = try {
                                                 tryAwaitRelease()
@@ -589,10 +564,8 @@ private fun MicButton(
                                                 isPressed = false
                                             }
 
-                                            if (shouldStart) {
-                                                if (released) onPressEnd()
-                                                else onPressCancel()
-                                            }
+                                            if (released) onPressEnd()
+                                            else onPressCancel()
                                         }
                                     )
                                 }
@@ -619,35 +592,6 @@ private fun MicButton(
                             fontWeight = FontWeight.Medium
                         )
                     }
-                }
-            } else {
-                // ============================================================
-                // Cancel / Stop Button (processing or speaking states)
-                // ============================================================
-                val iconDesc = if (isSpeaking) "停止播报" else "取消"
-                FilledIconButton(
-                    enabled = enabled,
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        when {
-                            isSpeaking -> onStopSpeaking()
-                            isProcessing -> onPressCancel()
-                            else -> {}
-                        }
-                    },
-                    modifier = Modifier
-                        .size(72.dp)
-                        .shadow(elevation = 4.dp, shape = CircleShape),
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = buttonBg
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Stop,
-                        contentDescription = iconDesc,
-                        modifier = Modifier.size(28.dp),
-                        tint = contentColor
-                    )
                 }
             }
         }

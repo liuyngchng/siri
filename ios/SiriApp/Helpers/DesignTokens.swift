@@ -20,11 +20,9 @@ enum ChatColors {
 
     // -- Mic button ---
     static let micIdleBackground     = Color(.systemGray5)
-    static let micIdleForeground     = Color.blue
+    static let micIdleForeground     = Color(.secondaryLabel)
     static let micActiveBackground   = Color.blue
     static let micActiveForeground   = Color.white
-    static let micSpeakingBackground = Color.red
-    static let micSpeakingForeground = Color.white
 
     // -- Typography ---
     static let secondaryLabel        = Color(.secondaryLabel)
