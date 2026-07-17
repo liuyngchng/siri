@@ -19,10 +19,13 @@ enum ChatColors {
     static let assistantBubbleText   = Color(.label)
 
     // -- Mic button ---
-    static let micIdleBackground     = Color(.systemGray5)
-    static let micIdleForeground     = Color(.secondaryLabel)
-    static let micActiveBackground   = Color.blue
+    // Filled tinted style — the primary action on screen.
+    static let micIdleBackground     = Color.blue
+    static let micIdleForeground     = Color.white
+    static let micActiveBackground   = Color.red
     static let micActiveForeground   = Color.white
+    static let micDisabledBackground = Color(.systemGray4)
+    static let micDisabledForeground = Color(.tertiaryLabel)
 
     // -- Typography ---
     static let secondaryLabel        = Color(.secondaryLabel)

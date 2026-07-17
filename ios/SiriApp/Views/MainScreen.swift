@@ -62,6 +62,7 @@ struct MainScreen: View {
                         if viewModel.messages.isEmpty {
                             StatusCenter(voiceState: viewModel.state.voiceState)
                                 .frame(minHeight: geometry.size.height)
+                                .id("statusCenter")
                         } else {
                             ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, msg in
                                 messageRow(at: index, message: msg, availableWidth: geometry.size.width)
@@ -89,8 +90,14 @@ struct MainScreen: View {
                     .padding(.top, ChatSpacing.listTopInset)
                     .padding(.bottom, ChatSpacing.listBottomInset)
                 }
-                .onChange(of: viewModel.messages.count) { _ in
-                    scrollToBottom(scrollProxy)
+                .onChange(of: viewModel.messages.count) { count in
+                    if count == 0 {
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            scrollProxy.scrollTo("statusCenter", anchor: .center)
+                        }
+                    } else {
+                        scrollToBottom(scrollProxy)
+                    }
                 }
                 .onChange(of: viewModel.state.assistantReply) { _ in
                     scrollToBottom(scrollProxy)
@@ -273,14 +280,14 @@ struct StatusCenter: View {
                         .font(.title2.weight(.semibold))
                         .foregroundColor(ChatColors.emptyStatePrimary)
 
-                    Text("按住麦克风按钮开始说话")
+                    Text("我是你的语音助手")
                         .font(.body)
                         .foregroundColor(ChatColors.emptyStateSecondary)
                 }
             }
             .frame(maxWidth: 280)
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("语音助手，按住麦克风按钮开始说话")
+            .accessibilityLabel("语音助手，按住下方按钮开始说话")
 
         default:
             EmptyView()

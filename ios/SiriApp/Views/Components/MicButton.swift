@@ -2,9 +2,13 @@
 //  MicButton.swift
 //  SiriApp
 //
-//  Circular microphone button — press-and-hold to record.
+//  Press-and-hold microphone button — redesigned following Apple HIG.
 //
-//  Interaction model (two states):
+//  Visual style: filled tinted circle (blue idle / red recording) with a
+//  descriptive label underneath, so users immediately understand the
+//  "press and hold to talk" interaction.
+//
+//  Interaction model:
 //   "录音中"  — press & hold: recording in progress
 //   "处理中"  — ASR → LLM → display → (optional) TTS
 //
@@ -56,16 +60,18 @@ struct MicButton: View {
     // MARK: - Styling
 
     private var iconName: String {
-        if isActive { return "stop.fill" }
+        if isRecording || isPressed { return "stop.fill" }
         return "mic.fill"
     }
 
     private var iconColor: Color {
+        if !enabled || isDisabled { return ChatColors.micDisabledForeground }
         if isActive { return ChatColors.micActiveForeground }
         return ChatColors.micIdleForeground
     }
 
     private var buttonBackground: Color {
+        if !enabled || isDisabled { return ChatColors.micDisabledBackground }
         if isActive { return ChatColors.micActiveBackground }
         return ChatColors.micIdleBackground
     }
@@ -78,11 +84,36 @@ struct MicButton: View {
         isRecording
     }
 
+    // MARK: - Label
+
+    private var labelText: String {
+        if !enabled || isDisabled {
+            if case .loading(let msg) = voiceState { return msg }
+            if case .error = voiceState { return "错误" }
+            return "不可用"
+        }
+        if isRecording { return "松开 结束" }
+        if isProcessing {
+            if case .recognizing = voiceState { return "识别中…" }
+            if case .thinking = voiceState { return "思考中…" }
+            if case .speaking = voiceState { return "播报中…" }
+            return "处理中…"
+        }
+        return "按住 说话"
+    }
+
+    private var labelColor: Color {
+        if !enabled || isDisabled { return Color(.tertiaryLabel) }
+        if isActive { return ChatColors.micActiveBackground }
+        return Color(.secondaryLabel)
+    }
+
     // MARK: - Body
 
     var body: some View {
-        ZStack {
-                // Pulse ring
+        VStack(spacing: ChatSpacing.pt8) {
+            ZStack {
+                // Pulse ring while recording
                 if showPulse {
                     PulseRing(
                         size: buttonSize * MicButtonMetrics.pulseRingScale,
@@ -91,18 +122,19 @@ struct MicButton: View {
                     )
                 }
 
-                // Main button — press-and-hold gesture
+                // Main button
                 Image(systemName: iconName)
                     .font(.system(size: buttonSize * MicButtonMetrics.iconScale,
                                   weight: .medium))
                     .foregroundColor(iconColor)
                     .frame(width: buttonSize, height: buttonSize)
-                    .background(buttonBackground)
-                    .clipShape(Circle())
-                    .shadow(color: Color.black.opacity(isActive ? 0 : 0.08),
-                            radius: 6, x: 0, y: 3)
-                    .opacity(enabled ? 1.0 : 0.5)
-                    .scaleEffect(isPressed ? 0.92 : 1.0)
+                    .background(
+                        Circle()
+                            .fill(buttonBackground)
+                    )
+                    .shadow(color: Color.black.opacity(0.15),
+                            radius: 10, x: 0, y: 4)
+                    .scaleEffect(isPressed ? MicButtonMetrics.pressScale : 1.0)
                     .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.7),
                                value: isPressed)
                     .gesture(
@@ -119,10 +151,18 @@ struct MicButton: View {
                             }
                     )
             }
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("语音输入")
-            .accessibilityHint(accessibilityHint)
-            .accessibilityAddTraits(.isButton)
+
+            // Descriptive label so users understand the interaction
+            Text(labelText)
+                .font(.caption.weight(.medium))
+                .foregroundColor(labelColor)
+                .animation(.easeInOut(duration: 0.2), value: labelText)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabelText)
+        .accessibilityHint(accessibilityHint)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityRemoveTraits(.isImage)
     }
 
     // MARK: - Press actions
@@ -152,10 +192,20 @@ struct MicButton: View {
 
     // MARK: - Accessibility
 
+    private var accessibilityLabelText: String {
+        if !enabled || isDisabled {
+            if case .loading(let msg) = voiceState { return msg }
+            return "语音输入不可用"
+        }
+        if isRecording { return "松开结束录音" }
+        if isProcessing { return "按住重新开始" }
+        return "按住开始录音"
+    }
+
     private var accessibilityHint: String {
         switch voiceState {
-        case .idle:        return "按住开始录音"
-        case .listening:   return "松开结束录音"
+        case .idle:        return ""
+        case .listening:   return ""
         case .recognizing: return "按住以重新开始录音"
         case .thinking:    return "按住以重新开始录音"
         case .speaking:    return "按住以重新开始录音"

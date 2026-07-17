@@ -43,7 +43,7 @@ class MainViewModel: ObservableObject {
         )[0]
 
         // Load TTS preference
-        state.ttsEnabled = UserDefaults.standard.object(forKey: "tts_enabled") as? Bool ?? true
+        state.ttsEnabled = UserDefaults.standard.object(forKey: "tts_enabled") as? Bool ?? false
 
         // Observe chat messages
         chatSession.$messages
