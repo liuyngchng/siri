@@ -26,9 +26,25 @@ struct MicButton: View {
     let onPressEnd: () -> Void
     let onPressCancel: () -> Void
 
+    /// When true, renders a compact icon-only button for use in an input bar.
+    var compact: Bool = false
+
     // MARK: - Adaptive sizing
 
-    @ScaledMetric(relativeTo: .title) private var buttonSize: CGFloat = MicButtonMetrics.defaultSize
+    private var effectiveSize: CGFloat {
+        compact ? MicButtonMetrics.compactSize : MicButtonMetrics.defaultSize
+    }
+
+    private var effectiveIconScale: CGFloat {
+        compact ? MicButtonMetrics.compactIconScale : MicButtonMetrics.iconScale
+    }
+
+    @ScaledMetric(relativeTo: .title) private var scaledDefaultSize: CGFloat = MicButtonMetrics.defaultSize
+    @ScaledMetric(relativeTo: .title) private var scaledCompactSize: CGFloat = MicButtonMetrics.compactSize
+
+    private var buttonSize: CGFloat {
+        compact ? scaledCompactSize : scaledDefaultSize
+    }
 
     @State private var isPressed = false
 
@@ -111,10 +127,10 @@ struct MicButton: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: ChatSpacing.pt8) {
+        VStack(spacing: compact ? 0 : ChatSpacing.pt8) {
             ZStack {
-                // Pulse ring while recording
-                if showPulse {
+                // Pulse ring while recording (full-size only)
+                if showPulse, !compact {
                     PulseRing(
                         size: buttonSize * MicButtonMetrics.pulseRingScale,
                         strokeWidth: 3,
@@ -124,7 +140,7 @@ struct MicButton: View {
 
                 // Main button
                 Image(systemName: iconName)
-                    .font(.system(size: buttonSize * MicButtonMetrics.iconScale,
+                    .font(.system(size: buttonSize * effectiveIconScale,
                                   weight: .medium))
                     .foregroundColor(iconColor)
                     .frame(width: buttonSize, height: buttonSize)
@@ -132,8 +148,8 @@ struct MicButton: View {
                         Circle()
                             .fill(buttonBackground)
                     )
-                    .shadow(color: Color.black.opacity(0.15),
-                            radius: 10, x: 0, y: 4)
+                    .shadow(color: Color.black.opacity(compact ? 0.10 : 0.15),
+                            radius: compact ? 4 : 10, x: 0, y: compact ? 2 : 4)
                     .scaleEffect(isPressed ? MicButtonMetrics.pressScale : 1.0)
                     .animation(.interactiveSpring(response: 0.3, dampingFraction: 0.7),
                                value: isPressed)
@@ -152,11 +168,13 @@ struct MicButton: View {
                     )
             }
 
-            // Descriptive label so users understand the interaction
-            Text(labelText)
-                .font(.caption.weight(.medium))
-                .foregroundColor(labelColor)
-                .animation(.easeInOut(duration: 0.2), value: labelText)
+            // Descriptive label (hidden in compact mode)
+            if !compact {
+                Text(labelText)
+                    .font(.caption.weight(.medium))
+                    .foregroundColor(labelColor)
+                    .animation(.easeInOut(duration: 0.2), value: labelText)
+            }
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabelText)

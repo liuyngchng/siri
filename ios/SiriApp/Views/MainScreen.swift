@@ -2,7 +2,7 @@
 //  MainScreen.swift
 //  SiriApp
 //
-//  Main chat UI: message list + microphone button.
+//  Main chat UI: message list + text & voice input bar.
 //  Redesigned following Apple HIG with adaptive spacing,
 //  smooth animations, and proper empty-state treatment.
 //
@@ -28,11 +28,11 @@ struct MainScreen: View {
                 Group {
                     if #available(iOS 15.0, *) {
                         chatContent
-                            .safeAreaInset(edge: .bottom, spacing: 0) { micBar }
+                            .safeAreaInset(edge: .bottom, spacing: 0) { chatInputBar }
                     } else {
                         VStack(spacing: 0) {
                             chatContent
-                            micBar
+                            chatInputBar
                                 .padding(.bottom, ChatSpacing.pt32)
                         }
                     }
@@ -148,37 +148,34 @@ struct MainScreen: View {
         }
     }
 
-    // MARK: - Mic Bar (blurred bottom bar)
+    // MARK: - Input Bar (text + voice)
 
-    private var micBar: some View {
-        VStack(spacing: 0) {
-            // Subtle separator line
-            Rectangle()
-                .fill(Color(.separator).opacity(0.3))
-                .frame(height: 0.5)
-
-            MicButton(
-                voiceState: viewModel.state.voiceState,
-                enabled: viewModel.state.enginesReady,
-                onPressStart: {
-                    _ = viewModel.checkConfig()
-                    viewModel.startListening()
-                },
-                onPressEnd: {
-                    if case .listening = viewModel.state.voiceState {
-                        viewModel.stopListening()
-                    }
-                },
-                onPressCancel: {
-                    viewModel.cancelListening()
+    private var chatInputBar: some View {
+        ChatInputBar(
+            text: $viewModel.textDraft,
+            voiceState: viewModel.state.voiceState,
+            enginesReady: viewModel.state.enginesReady,
+            onSendText: { viewModel.sendTextMessage() },
+            onPressStart: {
+                dismissKeyboard()
+                _ = viewModel.checkConfig()
+                viewModel.startListening()
+            },
+            onPressEnd: {
+                if case .listening = viewModel.state.voiceState {
+                    viewModel.stopListening()
                 }
-            )
-            .padding(.top, ChatSpacing.pt8)
-            .padding(.bottom, ChatSpacing.pt6)
-        }
-        .background(
-            BlurView(style: .systemMaterial)
-                .edgesIgnoringSafeArea(.bottom)
+            },
+            onPressCancel: {
+                viewModel.cancelListening()
+            }
+        )
+    }
+
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil, from: nil, for: nil
         )
     }
 

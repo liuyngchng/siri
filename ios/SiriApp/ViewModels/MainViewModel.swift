@@ -15,6 +15,7 @@ class MainViewModel: ObservableObject {
     @Published var state = AppState()
     @Published var messages: [ChatMessage] = []
     @Published var assistantReply: String = ""
+    @Published var textDraft: String = ""
 
     private let audioRecorder = AudioRecorder()
     private let audioPlayer = AudioPlayer()
@@ -366,6 +367,33 @@ class MainViewModel: ObservableObject {
         state.assistantReply = ""
         state.partialAsrText = ""
         state.finalAsrText = ""
+    }
+
+    // MARK: - Text input
+
+    func sendTextMessage() {
+        let text = textDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        textDraft = ""
+
+        // Cancel any in-progress voice/LLM/TTS pipeline
+        if case .speaking = state.voiceState {
+            stopSpeaking()
+        } else {
+            cancelAllTasks()
+        }
+
+        state.voiceState = .thinking
+
+        Task { @MainActor [weak self] in
+            guard let self = self else { return }
+            let hasConfig = self.configRepo.hasConfig
+            if !hasConfig {
+                self.state.voiceState = .error("请先在设置中配置 API 信息")
+                return
+            }
+            await self.streamLLMResponse(text)
+        }
     }
 
     deinit {

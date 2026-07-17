@@ -95,4 +95,27 @@ enum MicButtonMetrics {
     static let pressScale: CGFloat = 0.88
     /// Pulse ring size multiplier relative to button diameter.
     static let pulseRingScale: CGFloat = 1.5
+
+    // -- Compact (in-bar) variant ---
+    /// Button diameter when placed in the text-input bar.
+    static let compactSize: CGFloat = 40
+    /// Icon scale for the compact variant.
+    static let compactIconScale: CGFloat = 0.46
+}
+
+// MARK: - Input Bar Metrics
+
+enum InputBarMetrics {
+    /// Horizontal padding inside the text field.
+    static let fieldHPadding: CGFloat = 12
+    /// Vertical padding inside the text field.
+    static let fieldVPadding: CGFloat = 10
+    /// Corner radius of the text field background.
+    static let fieldCornerRadius: CGFloat = 20
+    /// Horizontal padding for the entire bar.
+    static let barHPadding: CGFloat = 16
+    /// Vertical padding for the bar content.
+    static let barVPadding: CGFloat = 8
+    /// Spacing between text field and action button.
+    static let elementSpacing: CGFloat = 8
 }
