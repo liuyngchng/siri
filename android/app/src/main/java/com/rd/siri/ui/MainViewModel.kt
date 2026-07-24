@@ -11,6 +11,10 @@ import com.rd.siri.asr.SherpaAsrEngine
 import com.rd.siri.chat.ChatSession
 import com.rd.siri.chat.LlmClient
 import com.rd.siri.config.ConfigRepository
+import com.rd.siri.rag.EmbeddingClient
+import com.rd.siri.rag.HybridSearcher
+import com.rd.siri.rag.KeywordSearcher
+import com.rd.siri.rag.VectorStore
 import com.rd.siri.model.AppState
 import com.rd.siri.model.ChatMessage
 import com.rd.siri.model.VoiceState
@@ -41,7 +45,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val ttsEngine = SherpaTtsEngine(application)
     private val configRepository = ConfigRepository(application)
     private val llmClient = LlmClient(configRepository)
-    val chatSession = ChatSession(llmClient)
+    private val vectorStore = VectorStore(application)
+    private val keywordSearcher = KeywordSearcher(application)
+    private val embeddingClient = EmbeddingClient(configRepository)
+    private val hybridSearcher = HybridSearcher(vectorStore, keywordSearcher, embeddingClient)
+    val chatSession = ChatSession(llmClient, configRepository, hybridSearcher)
 
     private val _state = MutableStateFlow(AppState())
     val state: StateFlow<AppState> = _state.asStateFlow()
@@ -75,6 +83,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val ttsReady = ttsDeferred.await()
             Log.i(TAG, "ASR engine init done, ready=$asrReady")
             Log.i(TAG, "TTS engine init done, ready=$ttsReady")
+
+            // Load RAG assets in background (non-blocking)
+            val vectorsLoaded = vectorStore.load()
+            val bm25Loaded = keywordSearcher.load()
+            Log.i(TAG, "RAG assets: vectors=$vectorsLoaded (${vectorStore.stats}), BM25=$bm25Loaded")
 
             _state.update {
                 if (asrReady && ttsReady) {

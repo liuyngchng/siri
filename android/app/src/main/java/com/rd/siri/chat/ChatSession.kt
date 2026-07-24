@@ -1,6 +1,9 @@
 package com.rd.siri.chat
 
+import android.util.Log
+import com.rd.siri.config.ConfigRepository
 import com.rd.siri.model.ChatMessage
+import com.rd.siri.rag.HybridSearcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -8,10 +11,16 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class ChatSession(
     private val llmClient: LlmClient,
+    private val configRepository: ConfigRepository,
+    private val hybridSearcher: HybridSearcher? = null,
     private val maxHistory: Int = 5,
     private val maxScreenMessages: Int = 20,
     private val maxContextBufferSize: Int = 200
 ) {
+
+    companion object {
+        private const val TAG = "SiriApp"
+    }
 
     /** Messages shown on screen — capped at [maxScreenMessages]. */
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
@@ -41,12 +50,35 @@ class ChatSession(
         }
     }
 
+    /**
+     * 混合检索：向量语义 + BM25 关键词 → RRF 融合。
+     * 如果 HybridSearcher 未配置或 RAG 被禁用，返回 null。
+     */
+    private suspend fun retrieveContext(userText: String): String? {
+        if (hybridSearcher == null) return null
+        if (!configRepository.isRagEnabled()) return null
+
+        val results = hybridSearcher.search(userText, topK = 3)
+        if (results.isEmpty()) {
+            Log.d(TAG, "retrieveContext: no relevant chunks found")
+            return null
+        }
+
+        Log.i(TAG, "retrieveContext: found ${results.size} chunks, " +
+                "top RRF scores: " + results.map { "%.4f".format(it.score) })
+
+        return results.joinToString("\n---\n") { result ->
+            result.content
+        }
+    }
+
     suspend fun send(text: String): Result<String> {
         val userMsg = ChatMessage(role = ChatMessage.Role.USER, content = text)
         appendToScreen(userMsg)
         appendToContext(userMsg)
 
-        val result = llmClient.chat(contextMessages)
+        val ragContext = retrieveContext(text)
+        val result = llmClient.chat(contextMessages, ragContext = ragContext)
 
         result.onSuccess { reply ->
             val assistantMsg = ChatMessage(role = ChatMessage.Role.ASSISTANT, content = reply)
@@ -66,8 +98,10 @@ class ChatSession(
         appendToScreen(userMsg)
         appendToContext(userMsg)
 
+        val ragContext = retrieveContext(text)
+
         return try {
-            val flow = llmClient.chatStream(contextMessages)
+            val flow = llmClient.chatStream(contextMessages, ragContext = ragContext)
             Result.success(flow)
         } catch (e: Exception) {
             _messages.value = _messages.value.dropLast(1)

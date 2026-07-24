@@ -5,7 +5,9 @@ data class LlmConfig(
     val model: String,
     val apiKey: String,
     val enableSearch: Boolean = true,
-    val searchParamName: String = "enable_search"
+    val searchParamName: String = "enable_search",
+    val embeddingModel: String = "text-embedding-v3",
+    val enableRag: Boolean = true
 ) {
     val baseUrl: String
         get() = apiUrl.trimEnd('/')

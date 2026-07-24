@@ -16,6 +16,8 @@ class ConfigRepository(context: Context) {
         private const val KEY_ENABLE_SEARCH = "enable_search"
         private const val KEY_SEARCH_PARAM_NAME = "search_param_name"
         private const val KEY_TTS_ENABLED = "tts_enabled"
+        private const val KEY_EMBEDDING_MODEL = "embedding_model"
+        private const val KEY_ENABLE_RAG = "enable_rag"
     }
 
     private val prefs = run {
@@ -38,8 +40,14 @@ class ConfigRepository(context: Context) {
         val key = prefs.getString(KEY_API_KEY, null) ?: return null
         val enableSearch = prefs.getBoolean(KEY_ENABLE_SEARCH, true)
         val searchParamName = prefs.getString(KEY_SEARCH_PARAM_NAME, "enable_search") ?: "enable_search"
+        val embeddingModel = prefs.getString(KEY_EMBEDDING_MODEL, "text-embedding-v3") ?: "text-embedding-v3"
+        val enableRag = prefs.getBoolean(KEY_ENABLE_RAG, true)
         if (url.isBlank() || model.isBlank() || key.isBlank()) return null
-        return LlmConfig(apiUrl = url, model = model, apiKey = key, enableSearch = enableSearch, searchParamName = searchParamName)
+        return LlmConfig(
+            apiUrl = url, model = model, apiKey = key,
+            enableSearch = enableSearch, searchParamName = searchParamName,
+            embeddingModel = embeddingModel, enableRag = enableRag
+        )
     }
 
     fun saveConfig(config: LlmConfig) {
@@ -49,8 +57,16 @@ class ConfigRepository(context: Context) {
             .putString(KEY_API_KEY, config.apiKey.trim())
             .putBoolean(KEY_ENABLE_SEARCH, config.enableSearch)
             .putString(KEY_SEARCH_PARAM_NAME, config.searchParamName)
+            .putString(KEY_EMBEDDING_MODEL, config.embeddingModel)
+            .putBoolean(KEY_ENABLE_RAG, config.enableRag)
             .apply()
     }
+
+    fun getEmbeddingModel(): String =
+        prefs.getString(KEY_EMBEDDING_MODEL, "text-embedding-v3") ?: "text-embedding-v3"
+
+    fun isRagEnabled(): Boolean =
+        prefs.getBoolean(KEY_ENABLE_RAG, true)
 
     fun isTtsEnabled(): Boolean = prefs.getBoolean(KEY_TTS_ENABLED, true)
 

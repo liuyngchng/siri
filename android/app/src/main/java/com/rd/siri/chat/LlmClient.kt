@@ -22,18 +22,24 @@ import java.util.concurrent.TimeUnit
 class LlmClient(private val configRepository: ConfigRepository) {
 
     companion object {
-        private fun buildSystemPrompt(enableSearch: Boolean): String {
+        private fun buildSystemPrompt(enableSearch: Boolean, ragContext: String? = null): String {
             val now = java.text.SimpleDateFormat("yyyy年M月d日 EEEE", java.util.Locale.CHINESE).format(java.util.Date())
             val base = "你是一个信息查询助手。请用简洁的中文直接回答用户的问题，控制在100字以内。" +
                 "不要问候、不要寒暄、不要闲聊，只输出问答结果。" +
                 "当前日期是$now。"
-            return if (enableSearch) {
-                base + "你已启用联网搜索，获取到的实时信息会直接提供给你。" +
+            val searchHint = if (enableSearch) {
+                "你已启用联网搜索，获取到的实时信息会直接提供给你。" +
                     "对于需要最新数据的问题（赛程、天气、新闻、股价等），务必基于搜索结果回答。" +
                     "严禁说你无法搜索或不支持联网——搜索是系统自动完成的。"
             } else {
-                base + "如果用户问到你不了解的事，直接说不知道即可。"
+                "如果用户问到你不了解的事，直接说不知道即可。"
             }
+            val ragHint = if (!ragContext.isNullOrBlank()) {
+                "\n\n以下是可能和用户问题相关的参考信息，如果相关请基于这些信息回答：\n$ragContext"
+            } else {
+                ""
+            }
+            return base + searchHint + ragHint
         }
 
         private val JSON_MEDIA_TYPE = "application/json".toMediaType()
@@ -55,14 +61,15 @@ class LlmClient(private val configRepository: ConfigRepository) {
 
     suspend fun chat(
         messages: List<ChatMessage>,
-        params: LlmParams = defaultParams
+        params: LlmParams = defaultParams,
+        ragContext: String? = null
     ): Result<String> = withContext(Dispatchers.IO) {
         val config = loadConfig() ?: return@withContext Result.failure(
             IllegalStateException("请先在设置中配置 API 信息")
         )
 
         runCatching {
-            val body = buildRequestBody(messages, config, params, stream = false)
+            val body = buildRequestBody(messages, config, params, stream = false, ragContext = ragContext)
             val request = buildRequest(config, body)
 
             val response = client.newCall(request).execute()
@@ -81,11 +88,12 @@ class LlmClient(private val configRepository: ConfigRepository) {
 
     fun chatStream(
         messages: List<ChatMessage>,
-        params: LlmParams = defaultParams
+        params: LlmParams = defaultParams,
+        ragContext: String? = null
     ): Flow<String> = flow {
         val config = loadConfig() ?: throw IllegalStateException("请先在设置中配置 API 信息")
 
-        val body = buildRequestBody(messages, config, params, stream = true)
+        val body = buildRequestBody(messages, config, params, stream = true, ragContext = ragContext)
         val request = buildRequest(config, body)
 
         val response = client.newCall(request).execute()
@@ -128,13 +136,14 @@ class LlmClient(private val configRepository: ConfigRepository) {
         messages: List<ChatMessage>,
         config: LlmConfig,
         params: LlmParams,
-        stream: Boolean
+        stream: Boolean,
+        ragContext: String? = null
     ): String {
         val msgArray = JSONArray()
 
         msgArray.put(JSONObject().apply {
             put("role", "system")
-            put("content", buildSystemPrompt(config.enableSearch))
+            put("content", buildSystemPrompt(config.enableSearch, ragContext))
         })
 
         for (msg in messages) {

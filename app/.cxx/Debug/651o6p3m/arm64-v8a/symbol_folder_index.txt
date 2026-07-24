@@ -1,1 +1,0 @@
-/home/rd/workspace/siri/app/build/intermediates/cxx/Debug/651o6p3m/obj/arm64-v8a
