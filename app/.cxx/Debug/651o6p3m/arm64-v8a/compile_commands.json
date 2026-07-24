@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/home/rd/workspace/siri/app/.cxx/Debug/651o6p3m/arm64-v8a",
+  "command": "/home/rd/Android/Sdk/ndk/25.1.8937393/toolchains/llvm/prebuilt/linux-x86_64/bin/clang --target=aarch64-none-linux-android31 --sysroot=/home/rd/Android/Sdk/ndk/25.1.8937393/toolchains/llvm/prebuilt/linux-x86_64/sysroot -DSHERPA_ONNX_AVAILABLE=1 -Dsherpa_onnx_jni_EXPORTS -I/home/rd/workspace/siri/app/src/main/cpp/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security -O3 -DNDEBUG -fno-limit-debug-info  -fPIC -o CMakeFiles/sherpa_onnx_jni.dir/sherpa_onnx_jni.c.o -c /home/rd/workspace/siri/app/src/main/cpp/sherpa_onnx_jni.c",
+  "file": "/home/rd/workspace/siri/app/src/main/cpp/sherpa_onnx_jni.c"
+}
+]

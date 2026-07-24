@@ -1,0 +1,7 @@
+# ninja log v5
+0	104	1782912008871686546	CMakeFiles/sherpa_onnx_jni.dir/sherpa_onnx_jni.c.o	3b680a986f6ba23b
+104	125	1782912008894687633	/home/rd/workspace/siri/app/build/intermediates/cxx/RelWithDebInfo/2q2bs575/obj/arm64-v8a/libsherpa_onnx_jni.so	2e1d2249d373ff83
+1	110	1783086139951933764	CMakeFiles/sherpa_onnx_jni.dir/sherpa_onnx_jni.c.o	3b680a986f6ba23b
+110	142	1783086139981935754	/home/rd/workspace/siri/app/build/intermediates/cxx/RelWithDebInfo/2q2bs575/obj/arm64-v8a/libsherpa_onnx_jni.so	2e1d2249d373ff83
+0	973	1783227703018936612	CMakeFiles/sherpa_onnx_jni.dir/sherpa_onnx_jni.c.o	3b680a986f6ba23b
+973	1248	1783227703308948580	/home/rd/workspace/siri/app/build/intermediates/cxx/RelWithDebInfo/2q2bs575/obj/arm64-v8a/libsherpa_onnx_jni.so	2e1d2249d373ff83

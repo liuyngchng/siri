@@ -1,0 +1,41 @@
+{
+  "buildFiles": [
+    "/home/rd/workspace/siri/app/src/main/cpp/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/home/rd/Android/Sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/home/rd/workspace/siri/app/.cxx/RelWithDebInfo/2q2bs575/armeabi-v7a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/home/rd/Android/Sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/home/rd/workspace/siri/app/.cxx/RelWithDebInfo/2q2bs575/armeabi-v7a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "sherpa_onnx_jni::@6890427a1f51a3e7e1df": {
+      "toolchain": "toolchain",
+      "abi": "armeabi-v7a",
+      "artifactName": "sherpa_onnx_jni",
+      "output": "/home/rd/workspace/siri/app/build/intermediates/cxx/RelWithDebInfo/2q2bs575/obj/armeabi-v7a/libsherpa_onnx_jni.so",
+      "runtimeFiles": [
+        "/home/rd/workspace/siri/app/src/main/jniLibs/armeabi-v7a/libsherpa-onnx-c-api.so",
+        "/home/rd/workspace/siri/app/src/main/jniLibs/armeabi-v7a/libonnxruntime.so"
+      ]
+    }
+  },
+  "toolchains": {
+    "toolchain": {
+      "cCompilerExecutable": "/home/rd/Android/Sdk/ndk/25.1.8937393/toolchains/llvm/prebuilt/linux-x86_64/bin/clang.lld",
+      "cppCompilerExecutable": "/home/rd/Android/Sdk/ndk/25.1.8937393/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++.lld"
+    }
+  },
+  "cFileExtensions": [
+    "c"
+  ],
+  "cppFileExtensions": []
+}

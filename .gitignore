@@ -52,3 +52,6 @@ ios/Frameworks/
 
 # Test
 */test-results/
+
+# Vector DB
+vectordb/
