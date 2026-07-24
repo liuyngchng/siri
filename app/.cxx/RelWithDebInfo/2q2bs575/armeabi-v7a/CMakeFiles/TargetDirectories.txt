@@ -1,3 +1,0 @@
-/home/rd/workspace/siri/app/.cxx/RelWithDebInfo/2q2bs575/armeabi-v7a/CMakeFiles/sherpa_onnx_jni.dir
-/home/rd/workspace/siri/app/.cxx/RelWithDebInfo/2q2bs575/armeabi-v7a/CMakeFiles/edit_cache.dir
-/home/rd/workspace/siri/app/.cxx/RelWithDebInfo/2q2bs575/armeabi-v7a/CMakeFiles/rebuild_cache.dir
