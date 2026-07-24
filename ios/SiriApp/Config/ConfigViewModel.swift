@@ -65,61 +65,121 @@ class ConfigViewModel: ObservableObject {
 
         testResult = .testing
 
-        guard let url = URL(string: "\(trimmedUrl)/chat/completions") else {
-            testResult = .failure("无效的 API 地址")
-            return
+        // Test both LLM and Embedding APIs
+        Task {
+            let llmResult = await testLLM(baseUrl: trimmedUrl, model: trimmedModel, apiKey: trimmedKey)
+            let embResult = await testEmbedding(baseUrl: trimmedUrl, apiKey: trimmedKey)
+
+            await MainActor.run {
+                switch (llmResult, embResult) {
+                case (.success, .success):
+                    testResult = .success("连接成功！LLM OK, Embedding OK")
+                case (.success, .failure(let embErr)):
+                    testResult = .failure("LLM OK, 但 Embedding 失败: \(embErr)")
+                case (.failure(let llmErr), .success):
+                    testResult = .failure("LLM 失败: \(llmErr)")
+                case (.failure(let llmErr), .failure(let embErr)):
+                    testResult = .failure("LLM 失败: \(llmErr)\nEmbedding 也失败: \(embErr)")
+                }
+            }
+        }
+    }
+
+    // MARK: - Individual API tests
+
+    private enum ApiTestResult {
+        case success
+        case failure(String)
+    }
+
+    private func testLLM(baseUrl: String, model: String, apiKey: String) async -> ApiTestResult {
+        guard let url = URL(string: "\(baseUrl)/chat/completions") else {
+            return .failure("无效的 API 地址")
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("Bearer \(trimmedKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 10
 
         let body: [String: Any] = [
-            "model": trimmedModel,
-            "messages": [
-                ["role": "user", "content": "hi"]
-            ],
+            "model": model,
+            "messages": [["role": "user", "content": "hi"]],
             "max_tokens": 1,
         ]
-
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
-        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
-            DispatchQueue.main.async {
+        return await withCheckedContinuation { continuation in
+            URLSession.shared.dataTask(with: request) { data, response, error in
                 if let error = error {
-                    let message: String
-                    let nsError = error as NSError
-                    switch nsError.code {
-                    case NSURLErrorCannotFindHost, NSURLErrorCannotConnectToHost:
-                        message = "无法连接到服务器，请检查 API 地址"
-                    case NSURLErrorTimedOut:
-                        message = "连接超时，请检查网络"
-                    case NSURLErrorServerCertificateUntrusted:
-                        message = "SSL 证书验证失败"
-                    default:
-                        message = "连接失败: \(error.localizedDescription)"
-                    }
-                    self?.testResult = .failure(message)
+                    continuation.resume(returning: .failure(self.summarizeError(error)))
                     return
                 }
-
                 guard let httpResponse = response as? HTTPURLResponse else {
-                    self?.testResult = .failure("无效的服务器响应")
+                    continuation.resume(returning: .failure("无效的服务器响应"))
                     return
                 }
-
                 if (200...299).contains(httpResponse.statusCode) {
-                    self?.testResult = .success("连接成功！API 响应正常")
+                    continuation.resume(returning: .success)
                 } else {
                     let errorBody = data.flatMap { String(data: $0, encoding: .utf8) } ?? "未知错误"
-                    self?.testResult = .failure(
-                        "服务器返回错误 (\(httpResponse.statusCode)): \(String(errorBody.prefix(200)))"
-                    )
+                    continuation.resume(returning: .failure("\(httpResponse.statusCode) \(String(errorBody.prefix(100)))"))
                 }
-            }
-        }.resume()
+            }.resume()
+        }
+    }
+
+    private func testEmbedding(baseUrl: String, apiKey: String) async -> ApiTestResult {
+        guard let url = URL(string: "\(baseUrl)/embeddings") else {
+            return .failure("无效的 API 地址")
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 10
+
+        let embeddingModel = repository.getEmbeddingModel()
+        let body: [String: Any] = [
+            "model": embeddingModel,
+            "input": "test",
+        ]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        return await withCheckedContinuation { continuation in
+            URLSession.shared.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    continuation.resume(returning: .failure(self.summarizeError(error)))
+                    return
+                }
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    continuation.resume(returning: .failure("无效的服务器响应"))
+                    return
+                }
+                if (200...299).contains(httpResponse.statusCode) {
+                    continuation.resume(returning: .success)
+                } else {
+                    let errorBody = data.flatMap { String(data: $0, encoding: .utf8) } ?? "未知错误"
+                    continuation.resume(returning: .failure("\(httpResponse.statusCode) \(String(errorBody.prefix(100)))"))
+                }
+            }.resume()
+        }
+    }
+
+    private func summarizeError(_ error: Error) -> String {
+        let nsError = error as NSError
+        switch nsError.code {
+        case NSURLErrorCannotFindHost, NSURLErrorCannotConnectToHost:
+            return "无法连接到服务器，请检查 API 地址"
+        case NSURLErrorTimedOut:
+            return "连接超时，请检查网络"
+        case NSURLErrorServerCertificateUntrusted:
+            return "SSL 证书验证失败"
+        default:
+            return error.localizedDescription
+        }
     }
 
     func clearConfig() {
