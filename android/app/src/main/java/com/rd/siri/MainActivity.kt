@@ -15,6 +15,7 @@ import com.rd.siri.config.ConfigViewModel
 import com.rd.siri.ui.MainScreen
 import com.rd.siri.ui.MainViewModel
 import com.rd.siri.ui.ModelSetupScreen
+import com.rd.siri.ui.RagSearchScreen
 import com.rd.siri.ui.SettingsHubScreen
 import com.rd.siri.ui.SettingsScreen
 import com.rd.siri.ui.theme.SiriTheme
