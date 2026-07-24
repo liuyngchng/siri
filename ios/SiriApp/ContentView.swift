@@ -33,6 +33,10 @@ struct ContentView: View {
                         contentVM.showSettings = false
                         contentVM.refreshState()
                         _ = mainVM.checkConfig()
+                    },
+                    ttsEnabled: mainVM.state.ttsEnabled,
+                    onToggleTts: { enabled in
+                        mainVM.toggleTts(enabled)
                     }
                 )
             } else {

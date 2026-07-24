@@ -28,8 +28,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 
     func applicationDidBecomeActive(_ application: UIApplication) {
         os_log(.info, "AppDelegate: didBecomeActive")
-        // Re-activate the audio session without overwriting the current
-        // category/mode — KWS may have been running with .voiceChat.
+        // Re-activate the audio session.
         do {
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {

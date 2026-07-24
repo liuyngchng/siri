@@ -13,19 +13,22 @@ siri/
 ├── README.md
 ├── DOC.md                         # 详细设计文档
 ├── download-models.sh             # 模型下载脚本（两端共用）
-├── app/                           # Android 端
+├── android/                       # Android 端
 │   ├── build.gradle.kts
-│   └── src/main/
-│       ├── java/com/rd/siri/
-│       │   ├── audio/             # 录音 / 播放 / 前台服务
-│       │   ├── asr/               # sherpa-onnx ASR 封装
-│       │   ├── tts/               # sherpa-onnx TTS 封装
-│       │   ├── chat/              # LLM 客户端
-│       │   ├── config/            # 配置存储（EncryptedSharedPreferences）
-│       │   ├── model/             # 模型管理 & 数据模型
-│       │   └── ui/                # Compose 界面
-│       ├── cpp/                   # JNI 桥接 C 源码
-│       └── jniLibs/               # 预编译 .so（从 GitHub Releases 获取）
+│   ├── settings.gradle.kts
+│   ├── gradlew / gradlew.bat
+│   └── app/
+│       └── src/main/
+│           ├── java/com/rd/siri/
+│           │   ├── audio/             # 录音 / 播放 / 前台服务
+│           │   ├── asr/               # sherpa-onnx ASR 封装
+│           │   ├── tts/               # sherpa-onnx TTS 封装
+│           │   ├── chat/              # LLM 客户端
+│           │   ├── config/            # 配置存储（EncryptedSharedPreferences）
+│           │   ├── model/             # 模型管理 & 数据模型
+│           │   └── ui/                # Compose 界面
+│           ├── cpp/                   # JNI 桥接 C 源码
+│           └── jniLibs/               # 预编译 .so（从 GitHub Releases 获取）
 └── ios/                           # iOS 端
     ├── download-frameworks.sh     # Framework 下载脚本
     ├── SiriApp/
@@ -63,7 +66,7 @@ siri/
 
 #### 2. CMake 编译产物（构建时自动编译，打包进 APK）
 
-以下 .so 由 CMake 在 `./gradlew assembleDebug` 时自动编译，源码在本仓库 `app/src/main/cpp/` 下：
+以下 .so 由 CMake 在 `cd android && ./gradlew assembleDebug` 时自动编译，源码在本仓库 `android/app/src/main/cpp/` 下：
 
 | 文件 | 源码 | 作用 |
 |------|------|------|
@@ -128,7 +131,7 @@ APK 不包含:
 #### 1. 构建 APK
 
 ```bash
-./gradlew assembleDebug
+cd android && ./gradlew assembleDebug
 ```
 
 构建过程：
@@ -136,7 +139,7 @@ APK 不包含:
 2. Gradle 编译 Kotlin/Java 源码
 3. 所有 .so（jniLibs 预编译 + CMake 编译产物）自动打包进 APK
 
-APK 按 ABI 拆分，产物在 `app/build/outputs/apk/debug/`：
+APK 按 ABI 拆分，产物在 `android/app/build/outputs/apk/debug/`：
 - `app-arm64-v8a-debug.apk`
 - `app-armeabi-v7a-debug.apk`
 
@@ -160,7 +163,7 @@ chmod +x download-models.sh
 #### 3. 安装运行
 
 ```bash
-adb install app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+adb install android/app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
 ```
 
 首次启动会显示**模型设置界面**，每个模型 slot 提供两种导入方式：

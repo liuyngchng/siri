@@ -50,8 +50,6 @@ final class ModelManager: ObservableObject {
     @Published var asrState: ModelDownloadState = .idle
     @Published var ttsState: ModelDownloadState = .idle
     @Published var vocoderState: ModelDownloadState = .idle
-    @Published var kwsState: ModelDownloadState = .idle
-
     private let queue = OperationQueue()
     private var currentDownloadTask: URLSessionDownloadTask?
     private var currentDownloadSession: URLSession?
@@ -60,68 +58,8 @@ final class ModelManager: ObservableObject {
 
     static let asrModelDir = "asr"
     static let ttsModelDir = "tts"
-    static let kwsModelDir = "kws"
-
     private static let asrRequired = ["model.int8.onnx", "tokens.txt"]
     private static let ttsRequired = ["model.onnx", "vocos.onnx", "tokens.txt", "lexicon.txt"]
-    private static let kwsRequired = ["encoder.onnx", "decoder.onnx", "joiner.onnx", "tokens.txt"]
-
-    /// KWS model archive contains multiple epochs and quantisation variants.
-    /// Match Android's selection:
-    ///   encoder – epoch-12 int8   (4.7 MB)
-    ///   decoder  – epoch-12 full   (675 KB, NOT int8)
-    ///   joiner   – epoch-12 int8   (65 KB)
-    ///
-    /// Strategy: scan the directory; for encoder/joiner prefer `.int8.onnx`,
-    /// for decoder prefer plain `.onnx` (not `.int8.onnx`). Falls back to
-    /// any match if the preferred variant is absent.
-    nonisolated static func applyKwsRenames() {
-        let dir = kwsModelDirURL()
-        let fm = FileManager.default
-
-        typealias Rule = (keyword: String, preferInt8: Bool, targetName: String)
-        let rules: [Rule] = [
-            ("encoder", true,  "encoder.onnx"),
-            ("decoder", false, "decoder.onnx"),
-            ("joiner",  true,  "joiner.onnx"),
-        ]
-
-        for (keyword, preferInt8, targetName) in rules {
-            let dst = dir.appendingPathComponent(targetName)
-            if fm.fileExists(atPath: dst.path) { continue }
-
-            guard let enumerator = fm.enumerator(
-                at: dir,
-                includingPropertiesForKeys: [.isRegularFileKey],
-                options: [.skipsHiddenFiles]
-            ) else { continue }
-
-            var bestMatch: URL?
-
-            for case let fileURL as URL in enumerator {
-                let name = fileURL.lastPathComponent
-                guard name.contains(keyword) && name.hasSuffix(".onnx") else { continue }
-                if bestMatch == nil {
-                    bestMatch = fileURL
-                }
-                let isInt8 = name.contains(".int8.onnx")
-                if preferInt8 && isInt8 {
-                    bestMatch = fileURL  // int8 is preferred
-                } else if !preferInt8 && !isInt8 {
-                    bestMatch = fileURL  // full precision is preferred
-                }
-            }
-
-            if let src = bestMatch {
-                try? fm.removeItem(at: dst)
-                try? fm.moveItem(at: src, to: dst)
-                modelLog.info("KWS rename: \(src.lastPathComponent) -> \(targetName)")
-            } else {
-                modelLog.warning("KWS rename: no match found for '\(keyword)'")
-            }
-        }
-    }
-
     private static let asrDownloadURL = URL(
         string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2025-09-09.tar.bz2"
     )!
@@ -130,9 +68,6 @@ final class ModelManager: ObservableObject {
     )!
     private static let vocoderDownloadURL = URL(
         string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-22khz-univ.onnx"
-    )!
-    private static let kwsDownloadURL = URL(
-        string: "https://github.com/k2-fsa/sherpa-onnx/releases/download/kws-models/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01.tar.bz2"
     )!
 
     deinit {
@@ -153,10 +88,6 @@ final class ModelManager: ObservableObject {
     nonisolated static func ttsModelDirURL() -> URL {
         modelsDir().appendingPathComponent(ttsModelDir)
     }
-    nonisolated static func kwsModelDirURL() -> URL {
-        modelsDir().appendingPathComponent(kwsModelDir)
-    }
-
     // MARK: - Ready Checks
 
     nonisolated static func checkAllReady() -> Bool { checkAsrReady() && checkTtsReady() }
@@ -179,10 +110,6 @@ final class ModelManager: ObservableObject {
         modelLog.info("checkVocoderReady: path=\(path), exists=\(exists)")
         return exists
     }
-    nonisolated static func checkKwsReady() -> Bool {
-        let dir = kwsModelDirURL()
-        return kwsRequired.allSatisfy { FileManager.default.fileExists(atPath: dir.appendingPathComponent($0).path) }
-    }
 
     // MARK: - Cancel
 
@@ -196,7 +123,6 @@ final class ModelManager: ObservableObject {
         if case .queued = asrState { asrState = .idle }
         if case .queued = ttsState { ttsState = .idle }
         if case .queued = vocoderState { vocoderState = .idle }
-        if case .queued = kwsState { kwsState = .idle }
     }
 
     // MARK: - Download (enqueue, returns immediately)
@@ -234,17 +160,6 @@ final class ModelManager: ObservableObject {
         }
     }
 
-    func downloadKwsModel() {
-        guard kwsState != .completed(Date()) else { return }
-        modelLog.info("downloadKwsModel enqueued")
-        kwsState = .queued
-        Task {
-            await queue.enqueue { [weak self] in
-                await self?._downloadKwsModel()
-            }
-        }
-    }
-
     // MARK: - Import (enqueue, returns immediately)
 
     func importAsrModel(from sourceURL: URL, cleanup: (() -> Void)? = nil) {
@@ -273,16 +188,6 @@ final class ModelManager: ObservableObject {
         Task {
             await queue.enqueue { [weak self] in
                 await self?._importVocoder(from: sourceURL, cleanup: cleanup)
-            }
-        }
-    }
-
-    func importKwsModel(from sourceURL: URL, cleanup: (() -> Void)? = nil) {
-        modelLog.info("importKwsModel enqueued: \(sourceURL.lastPathComponent)")
-        kwsState = .queued
-        Task {
-            await queue.enqueue { [weak self] in
-                await self?._importKwsModel(from: sourceURL, cleanup: cleanup)
             }
         }
     }
@@ -343,19 +248,6 @@ final class ModelManager: ObservableObject {
         vocoderState = .completed(Date())
     }
 
-    private func _downloadKwsModel() async {
-        await _downloadAndExtract(
-            url: Self.kwsDownloadURL,
-            destDir: Self.kwsModelDir,
-            archiveName: "kws_model.tar.bz2",
-            statePath: \.kwsState,
-            checkReady: {
-                Self.applyKwsRenames()
-                return Self.checkKwsReady()
-            }
-        )
-    }
-
     // MARK: - Private: Actual Import Logic (runs sequentially)
 
     private func _importAsrModel(from sourceURL: URL, cleanup: (() -> Void)?) async {
@@ -364,18 +256,6 @@ final class ModelManager: ObservableObject {
 
     private func _importTtsModel(from sourceURL: URL, cleanup: (() -> Void)?) async {
         await _importArchive(from: sourceURL, destDir: Self.ttsModelDir, statePath: \.ttsState, cleanup: cleanup)
-    }
-
-    private func _importKwsModel(from sourceURL: URL, cleanup: (() -> Void)?) async {
-        await _importArchive(from: sourceURL, destDir: Self.kwsModelDir, statePath: \.kwsState, cleanup: cleanup)
-        // Rename long KWS file names to standard short names after extraction
-        if case .completed = kwsState {
-            Self.applyKwsRenames()
-            if !Self.checkKwsReady() {
-                modelLog.warning("KWS import: files extracted but verification failed after rename")
-                kwsState = .failed("解压完成但文件验证失败")
-            }
-        }
     }
 
     private func _importVocoder(from sourceURL: URL, cleanup: (() -> Void)?) async {

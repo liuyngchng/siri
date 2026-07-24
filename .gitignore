@@ -17,9 +17,11 @@ local.properties
 *.aab
 *.dex
 *.class
-app/release/
-app/build/
-app/.cxx/
+android/app/release/
+android/app/build/
+android/app/.cxx/
+android/build/
+android/.gradle/
 
 # OS
 .DS_Store

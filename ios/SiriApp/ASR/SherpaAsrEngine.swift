@@ -124,6 +124,12 @@ class SherpaAsrEngine {
         return text
     }
 
+    /// Clear buffered samples without decoding. Call before starting a new
+    /// recording to discard any stale samples from a cancelled session.
+    func reset() {
+        sampleBuffer = []
+    }
+
     func destroy() {
         guard isInitialized, let recognizer = recognizer else { return }
 

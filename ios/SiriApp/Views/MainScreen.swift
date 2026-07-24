@@ -2,7 +2,7 @@
 //  MainScreen.swift
 //  SiriApp
 //
-//  Main chat UI: message list + microphone button.
+//  Main chat UI: message list + text & voice input bar.
 //  Redesigned following Apple HIG with adaptive spacing,
 //  smooth animations, and proper empty-state treatment.
 //
@@ -28,11 +28,11 @@ struct MainScreen: View {
                 Group {
                     if #available(iOS 15.0, *) {
                         chatContent
-                            .safeAreaInset(edge: .bottom, spacing: 0) { micBar }
+                            .safeAreaInset(edge: .bottom, spacing: 0) { chatInputBar }
                     } else {
                         VStack(spacing: 0) {
                             chatContent
-                            micBar
+                            chatInputBar
                                 .padding(.bottom, ChatSpacing.pt32)
                         }
                     }
@@ -62,6 +62,7 @@ struct MainScreen: View {
                         if viewModel.messages.isEmpty {
                             StatusCenter(voiceState: viewModel.state.voiceState)
                                 .frame(minHeight: geometry.size.height)
+                                .id("statusCenter")
                         } else {
                             ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, msg in
                                 messageRow(at: index, message: msg, availableWidth: geometry.size.width)
@@ -89,8 +90,14 @@ struct MainScreen: View {
                     .padding(.top, ChatSpacing.listTopInset)
                     .padding(.bottom, ChatSpacing.listBottomInset)
                 }
-                .onChange(of: viewModel.messages.count) { _ in
-                    scrollToBottom(scrollProxy)
+                .onChange(of: viewModel.messages.count) { count in
+                    if count == 0 {
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            scrollProxy.scrollTo("statusCenter", anchor: .center)
+                        }
+                    } else {
+                        scrollToBottom(scrollProxy)
+                    }
                 }
                 .onChange(of: viewModel.state.assistantReply) { _ in
                     scrollToBottom(scrollProxy)
@@ -141,40 +148,34 @@ struct MainScreen: View {
         }
     }
 
-    // MARK: - Mic Bar (blurred bottom bar)
+    // MARK: - Input Bar (text + voice)
 
-    private var micBar: some View {
-        VStack(spacing: 0) {
-            // Subtle separator line
-            Rectangle()
-                .fill(Color(.separator).opacity(0.3))
-                .frame(height: 0.5)
-
-            MicButton(
-                voiceState: viewModel.state.voiceState,
-                enabled: viewModel.state.enginesReady,
-                onPressStart: {
-                    _ = viewModel.checkConfig()
-                    viewModel.startListening()
-                },
-                onPressEnd: {
-                    if case .listening = viewModel.state.voiceState {
-                        viewModel.stopListening()
-                    }
-                },
-                onPressCancel: {
-                    viewModel.cancelListening()
-                },
-                onStopSpeaking: {
-                    viewModel.stopSpeaking()
+    private var chatInputBar: some View {
+        ChatInputBar(
+            text: $viewModel.textDraft,
+            voiceState: viewModel.state.voiceState,
+            enginesReady: viewModel.state.enginesReady,
+            onSendText: { viewModel.sendTextMessage() },
+            onPressStart: {
+                dismissKeyboard()
+                _ = viewModel.checkConfig()
+                viewModel.startListening()
+            },
+            onPressEnd: {
+                if case .listening = viewModel.state.voiceState {
+                    viewModel.stopListening()
                 }
-            )
-            .padding(.top, ChatSpacing.pt8)
-            .padding(.bottom, ChatSpacing.pt6)
-        }
-        .background(
-            BlurView(style: .systemMaterial)
-                .edgesIgnoringSafeArea(.bottom)
+            },
+            onPressCancel: {
+                viewModel.cancelListening()
+            }
+        )
+    }
+
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil, from: nil, for: nil
         )
     }
 
@@ -191,7 +192,6 @@ struct MainScreen: View {
                     }
                     .accessibilityLabel("清除历史")
                 }
-                wakeWordToggle
                 Button(action: onNavigateToSettings) {
                     Image(systemName: "gearshape")
                         .font(.system(size: 18, weight: .medium))
@@ -199,21 +199,6 @@ struct MainScreen: View {
                 .accessibilityLabel("设置")
             }
         }
-    }
-
-    @ViewBuilder
-    private var wakeWordToggle: some View {
-        Button(action: {
-            let newValue = !viewModel.state.wakeWordEnabled
-            viewModel.toggleWakeWord(newValue)
-        }) {
-            Image(systemName: viewModel.state.wakeWordEnabled
-                  ? "ear.fill"
-                  : "ear")
-                .font(.system(size: 18, weight: .medium))
-                .foregroundColor(viewModel.state.wakeWordEnabled ? .blue : .primary)
-        }
-        .accessibilityLabel(viewModel.state.wakeWordEnabled ? "关闭语音唤醒" : "开启语音唤醒")
     }
 
     // MARK: - Alert
@@ -292,14 +277,14 @@ struct StatusCenter: View {
                         .font(.title2.weight(.semibold))
                         .foregroundColor(ChatColors.emptyStatePrimary)
 
-                    Text("按住麦克风按钮开始说话")
+                    Text("我是你的语音助手")
                         .font(.body)
                         .foregroundColor(ChatColors.emptyStateSecondary)
                 }
             }
             .frame(maxWidth: 280)
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("语音助手，按住麦克风按钮开始说话")
+            .accessibilityLabel("语音助手，按住下方按钮开始说话")
 
         default:
             EmptyView()

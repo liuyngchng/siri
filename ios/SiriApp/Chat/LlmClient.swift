@@ -40,7 +40,8 @@ class LlmClient {
         df.locale = Locale(identifier: "zh_CN")
         df.dateFormat = "yyyy年M月d日 EEEE"
         let now = df.string(from: Date())
-        let base = "你是语音助手，请用简洁的口语化中文回答，回答控制在100字以内。" +
+        let base = "你是一个信息查询助手。请用简洁的中文直接回答用户的问题，控制在100字以内。" +
+            "不要问候、不要寒暄、不要闲聊，只输出问答结果。" +
             "当前日期是\(now)。"
         if enableSearch {
             return base +

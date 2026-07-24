@@ -11,6 +11,8 @@ import SwiftUI
 struct SettingsHubScreen: View {
     @ObservedObject var configVM: ConfigViewModel
     var onDismiss: () -> Void
+    var ttsEnabled: Bool = true
+    var onToggleTts: ((Bool) -> Void)? = nil
 
     /// Build-time-based version string (executable modification date).
     private var appVersion: String {
@@ -52,6 +54,26 @@ struct SettingsHubScreen: View {
                             Image(systemName: "waveform.circle.fill")
                                 .foregroundColor(.blue)
                         }
+                    }
+                }
+
+                // MARK: - 交互
+                Section(header: Text("交互")) {
+                    HStack {
+                        Label {
+                            Text("语音播报")
+                        } icon: {
+                            Image(systemName: ttsEnabled
+                                  ? "speaker.wave.2.fill"
+                                  : "speaker.slash.fill")
+                                .foregroundColor(ttsEnabled ? .blue : .secondary)
+                        }
+                        Spacer()
+                        Toggle("", isOn: Binding<Bool>(
+                            get: { ttsEnabled },
+                            set: { onToggleTts?($0) }
+                        ))
+                        .labelsHidden()
                     }
                 }
 
