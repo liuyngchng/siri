@@ -13,6 +13,9 @@ struct SettingsHubScreen: View {
     var onDismiss: () -> Void
     var ttsEnabled: Bool = true
     var onToggleTts: ((Bool) -> Void)? = nil
+    var hybridSearcher: HybridSearcher? = nil
+    var vectorStore: VectorStore? = nil
+    var keywordSearcher: KeywordSearcher? = nil
 
     /// Build-time-based version string (executable modification date).
     private var appVersion: String {
@@ -39,6 +42,25 @@ struct SettingsHubScreen: View {
                         } icon: {
                             Image(systemName: "gearshape.fill")
                                 .foregroundColor(.blue)
+                        }
+                    }
+
+                    if let hs = hybridSearcher,
+                       let vs = vectorStore,
+                       let ks = keywordSearcher {
+                        NavigationLink(destination:
+                            RagSearchView(
+                                hybridSearcher: hs,
+                                vectorStore: vs,
+                                keywordSearcher: ks
+                            )
+                        ) {
+                            Label {
+                                Text("知识库检索")
+                            } icon: {
+                                Image(systemName: "text.magnifyingglass")
+                                    .foregroundColor(.orange)
+                            }
                         }
                     }
                 }

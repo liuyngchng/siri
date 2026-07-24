@@ -21,6 +21,15 @@
 		6EB7859D02144241969BCF1C /* SherpaAsrEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54C097292C3A4126AB02E69A /* SherpaAsrEngine.swift */; };
 		6F9DC92F1C58451A93961CD5 /* TextNormalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CDB49A5CCE942FAA63DF656 /* TextNormalizer.swift */; };
 		745864A84B4B482797185001 /* AudioSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D74FD10E5EEA479584867D9C /* AudioSessionManager.swift */; };
+		7917A0F8301365260018FFCF /* HybridSearcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7917A0F4301365260018FFCF /* HybridSearcher.swift */; };
+		7917A0F9301365260018FFCF /* KeywordSearcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7917A0F5301365260018FFCF /* KeywordSearcher.swift */; };
+		7917A0FA301365260018FFCF /* EmbeddingClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7917A0F6301365260018FFCF /* EmbeddingClient.swift */; };
+		7917A0FB301365260018FFCF /* VectorStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7917A0F7301365260018FFCF /* VectorStore.swift */; };
+		7917A100301365490018FFCF /* bm25_index.json in Resources */ = {isa = PBXBuildFile; fileRef = 7917A0FD301365490018FFCF /* bm25_index.json */; };
+		7917A101301365490018FFCF /* vectors.bin in Resources */ = {isa = PBXBuildFile; fileRef = 7917A0FE301365490018FFCF /* vectors.bin */; };
+		7917A102301365490018FFCF /* chunks.json in Resources */ = {isa = PBXBuildFile; fileRef = 7917A0FF301365490018FFCF /* chunks.json */; };
+		7917A10430136B160018FFCF /* RagSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7917A10330136B150018FFCF /* RagSearchView.swift */; };
+		7917A10630136B3F0018FFCF /* RagSearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7917A10530136B3F0018FFCF /* RagSearchViewModel.swift */; };
 		7947C759300A42390051F5DC /* ChatInputBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7947C758300A42390051F5DC /* ChatInputBar.swift */; };
 		79C805A02FF7DF6700A08F5B /* SiriAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79C8059F2FF7DF6700A08F5B /* SiriAppApp.swift */; };
 		79C805A22FF7DF6700A08F5B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79C805A12FF7DF6700A08F5B /* ContentView.swift */; };
@@ -58,6 +67,15 @@
 		54C097292C3A4126AB02E69A /* SherpaAsrEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SherpaAsrEngine.swift; sourceTree = "<group>"; };
 		5CCAF64DCBA045C2A8EB00D5 /* ConfigRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigRepository.swift; sourceTree = "<group>"; };
 		6616447CD980402EA4814893 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
+		7917A0F4301365260018FFCF /* HybridSearcher.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HybridSearcher.swift; sourceTree = "<group>"; };
+		7917A0F5301365260018FFCF /* KeywordSearcher.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = KeywordSearcher.swift; sourceTree = "<group>"; };
+		7917A0F6301365260018FFCF /* EmbeddingClient.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = EmbeddingClient.swift; sourceTree = "<group>"; };
+		7917A0F7301365260018FFCF /* VectorStore.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VectorStore.swift; sourceTree = "<group>"; };
+		7917A0FD301365490018FFCF /* bm25_index.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = bm25_index.json; sourceTree = "<group>"; };
+		7917A0FE301365490018FFCF /* vectors.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; path = vectors.bin; sourceTree = "<group>"; };
+		7917A0FF301365490018FFCF /* chunks.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = chunks.json; sourceTree = "<group>"; };
+		7917A10330136B150018FFCF /* RagSearchView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RagSearchView.swift; sourceTree = "<group>"; };
+		7917A10530136B3F0018FFCF /* RagSearchViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RagSearchViewModel.swift; sourceTree = "<group>"; };
 		7947C758300A42390051F5DC /* ChatInputBar.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChatInputBar.swift; sourceTree = "<group>"; };
 		79C8059C2FF7DF6700A08F5B /* VoiceChat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VoiceChat.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		79C8059F2FF7DF6700A08F5B /* SiriAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiriAppApp.swift; sourceTree = "<group>"; };
@@ -116,6 +134,7 @@
 		62C7C0955AB845599A4D6FE6 /* ViewModels */ = {
 			isa = PBXGroup;
 			children = (
+				7917A10530136B3F0018FFCF /* RagSearchViewModel.swift */,
 				237AF0FA117F4AF2A14F33DB /* ContentViewModel.swift */,
 				94539FC5D5074D9A932E50D3 /* MainViewModel.swift */,
 			);
@@ -129,6 +148,27 @@
 				D4EAB841A334476DA8B7B0E9 /* ConfigViewModel.swift */,
 			);
 			path = Config;
+			sourceTree = "<group>";
+		};
+		7917A0F3301365260018FFCF /* Rag */ = {
+			isa = PBXGroup;
+			children = (
+				7917A0F4301365260018FFCF /* HybridSearcher.swift */,
+				7917A0F5301365260018FFCF /* KeywordSearcher.swift */,
+				7917A0F6301365260018FFCF /* EmbeddingClient.swift */,
+				7917A0F7301365260018FFCF /* VectorStore.swift */,
+			);
+			path = Rag;
+			sourceTree = "<group>";
+		};
+		7917A0FC301365490018FFCF /* RagAssets */ = {
+			isa = PBXGroup;
+			children = (
+				7917A0FD301365490018FFCF /* bm25_index.json */,
+				7917A0FE301365490018FFCF /* vectors.bin */,
+				7917A0FF301365490018FFCF /* chunks.json */,
+			);
+			path = RagAssets;
 			sourceTree = "<group>";
 		};
 		79C805932FF7DF6700A08F5B = {
@@ -153,6 +193,8 @@
 		79C8059E2FF7DF6700A08F5B /* SiriApp */ = {
 			isa = PBXGroup;
 			children = (
+				7917A0FC301365490018FFCF /* RagAssets */,
+				7917A0F3301365260018FFCF /* Rag */,
 				79C8059F2FF7DF6700A08F5B /* SiriAppApp.swift */,
 				79C805A12FF7DF6700A08F5B /* ContentView.swift */,
 				79C805A32FF7DF6800A08F5B /* Assets.xcassets */,
@@ -229,6 +271,7 @@
 		DB67BB4D1A3843E598A5DE6E /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				7917A10330136B150018FFCF /* RagSearchView.swift */,
 				526A1237892D4644ACB127EC /* MainScreen.swift */,
 				DD7E3C8DE001425E844B70D5 /* SettingsScreen.swift */,
 				HUBSCR33N0000000000000002 /* SettingsHubScreen.swift */,
@@ -318,8 +361,11 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7917A102301365490018FFCF /* chunks.json in Resources */,
+				7917A101301365490018FFCF /* vectors.bin in Resources */,
 				79C805A72FF7DF6800A08F5B /* Preview Assets.xcassets in Resources */,
 				79C805A42FF7DF6800A08F5B /* Assets.xcassets in Resources */,
+				7917A100301365490018FFCF /* bm25_index.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -355,23 +401,28 @@
 			files = (
 				79C805A22FF7DF6700A08F5B /* ContentView.swift in Sources */,
 				79C805A02FF7DF6700A08F5B /* SiriAppApp.swift in Sources */,
+				7917A0F9301365260018FFCF /* KeywordSearcher.swift in Sources */,
 				FF6340AEEB634F4ABBADBE4B /* AppDelegate.swift in Sources */,
 				DE7BF72202BA4D86A35CA2E2 /* ChatMessage.swift in Sources */,
+				7917A0F8301365260018FFCF /* HybridSearcher.swift in Sources */,
 				5475B21456B24F308DA0021D /* AppState.swift in Sources */,
 				5858C72BDB1648D393B6738A /* LlmConfig.swift in Sources */,
 				52FFC4404B08415D8E695BF0 /* LlmPreset.swift in Sources */,
 				AB08C49821514483A558DF91 /* Extensions.swift in Sources */,
 				B77EE3F598AC40F2BDBB88C5 /* KeychainHelper.swift in Sources */,
 				CDAF823AFEC54148B79A5140 /* ModelManager.swift in Sources */,
+				7917A0FA301365260018FFCF /* EmbeddingClient.swift in Sources */,
 				495E00872A1F4409A7ECBDC9 /* TarBz2Extractor.swift in Sources */,
 				D5116N70K3N5D3S1GN00001 /* DesignTokens.swift in Sources */,
 				4FE92A09D578418AA2FEBEFB /* ConfigRepository.swift in Sources */,
 				8DBBFAAEB0634A1C84A79D7F /* ConfigViewModel.swift in Sources */,
 				1087E93ADFF84A588DADE826 /* ChatSession.swift in Sources */,
+				7917A10430136B160018FFCF /* RagSearchView.swift in Sources */,
 				5CF981A1A96A4444B952CF77 /* LlmClient.swift in Sources */,
 				A7BDED88EFF141278A38C1DA /* AudioPlayer.swift in Sources */,
 				D9EE6C120D224DF694204F7B /* AudioRecorder.swift in Sources */,
 				745864A84B4B482797185001 /* AudioSessionManager.swift in Sources */,
+				7917A10630136B3F0018FFCF /* RagSearchViewModel.swift in Sources */,
 				6EB7859D02144241969BCF1C /* SherpaAsrEngine.swift in Sources */,
 				9606974F1CDA43BE820242F0 /* SherpaTtsEngine.swift in Sources */,
 				6F9DC92F1C58451A93961CD5 /* TextNormalizer.swift in Sources */,
@@ -384,6 +435,7 @@
 				948274C2A2DA43FBBDD71E9E /* MessageBubble.swift in Sources */,
 				86186CD126BD4928B4D9585B /* MicButton.swift in Sources */,
 				7A310C16DF4B49E3B1B9522A /* BlurView.swift in Sources */,
+				7917A0FB301365260018FFCF /* VectorStore.swift in Sources */,
 				31EF43410F5A4DB4BE2F15D6 /* ModelSlotCard.swift in Sources */,
 				7947C759300A42390051F5DC /* ChatInputBar.swift in Sources */,
 				E41EC46E95B34D5483E19B7E /* PulseRing.swift in Sources */,

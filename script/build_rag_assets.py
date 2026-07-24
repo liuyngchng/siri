@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 """
-将 Markdown 知识库预处理为 Android RAG 资源文件。
+将 Markdown 知识库预处理为 RAG 资源文件（Android / iOS 通用）。
 
 用法:
+    # Android
     python build_rag_assets.py --docs ./docs --out ./android/app/src/main/assets/rag/
+
+    # iOS
+    python build_rag_assets.py --docs ./docs --out ./ios/SiriApp/RagAssets/
 
 输出:
     chunks.json  — 元数据数组 [{"file": ..., "title": ..., "content": ...}, ...]
     vectors.bin  — float32 向量矩阵 (num_chunks × dim)，小端序
+    bm25_index.json — BM25 倒排索引
 
 依赖:
     pip install openai numpy

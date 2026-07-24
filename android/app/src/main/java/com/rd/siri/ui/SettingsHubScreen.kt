@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.FindInPage
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,6 +32,7 @@ import java.util.Locale
 fun SettingsHubScreen(
     onNavigateToLlmConfig: () -> Unit,
     onNavigateToModelSetup: () -> Unit,
+    onNavigateToRagSearch: () -> Unit = {},
     onDismiss: () -> Unit,
     ttsEnabled: Boolean = true,
     onToggleTts: (Boolean) -> Unit = {}
@@ -77,6 +79,14 @@ fun SettingsHubScreen(
                     title = "大模型 API",
                     subtitle = "API 地址、模型名称、密钥",
                     onClick = onNavigateToLlmConfig
+                )
+            }
+            item(key = "rag_search") {
+                SettingsRow(
+                    icon = Icons.Filled.FindInPage,
+                    title = "知识库检索",
+                    subtitle = "测试知识库混合检索效果",
+                    onClick = onNavigateToRagSearch
                 )
             }
 

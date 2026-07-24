@@ -37,7 +37,10 @@ struct ContentView: View {
                     ttsEnabled: mainVM.state.ttsEnabled,
                     onToggleTts: { enabled in
                         mainVM.toggleTts(enabled)
-                    }
+                    },
+                    hybridSearcher: mainVM.hybridSearcher,
+                    vectorStore: mainVM.vectorStore,
+                    keywordSearcher: mainVM.keywordSearcher
                 )
             } else {
                 MainScreen(

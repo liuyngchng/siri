@@ -29,7 +29,21 @@ class MainViewModel: ObservableObject {
         SherpaTtsEngine(documentsDir: documentsDir)
     }()
     private lazy var llmClient = LlmClient(configRepository: configRepo)
-    private(set) lazy var chatSession = ChatSession(llmClient: llmClient)
+
+    // RAG components
+    private(set) lazy var vectorStore = VectorStore()
+    private(set) lazy var keywordSearcher = KeywordSearcher()
+    private lazy var embeddingClient = EmbeddingClient(configRepository: configRepo)
+    private(set) lazy var hybridSearcher = HybridSearcher(
+        vectorStore: vectorStore,
+        keywordSearcher: keywordSearcher,
+        embedClient: embeddingClient
+    )
+    private(set) lazy var chatSession = ChatSession(
+        llmClient: llmClient,
+        configRepository: configRepo,
+        hybridSearcher: hybridSearcher
+    )
 
     private var recordingCancellable: AnyCancellable?
     private var streamingCancellable: AnyCancellable?
@@ -72,6 +86,17 @@ class MainViewModel: ObservableObject {
 
             let asrReady = await MainActor.run { self.asrEngine.initialize() }
             let ttsReady = await MainActor.run { self.ttsEngine.initialize() }
+
+            // Load RAG assets in background (non-blocking)
+            let vectorsLoaded = await MainActor.run { self.vectorStore.load() }
+            let bm25Loaded = await MainActor.run { self.keywordSearcher.load() }
+            let stats = await MainActor.run { self.vectorStore.stats }
+            os_log(.info, log: OSLog(subsystem: "dev.richard.voicechat", category: "MainVM"),
+                   "RAG assets: vectors loaded=%{public}@, chunks=%{public}d, dim=%{public}d, BM25 loaded=%{public}@",
+                   vectorsLoaded ? "true" : "false",
+                   stats.numChunks,
+                   stats.dim,
+                   bm25Loaded ? "true" : "false")
 
             await MainActor.run {
                 self.state.enginesReady = asrReady && ttsReady

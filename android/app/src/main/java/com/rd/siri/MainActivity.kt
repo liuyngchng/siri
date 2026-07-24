@@ -19,7 +19,7 @@ import com.rd.siri.ui.SettingsHubScreen
 import com.rd.siri.ui.SettingsScreen
 import com.rd.siri.ui.theme.SiriTheme
 
-private enum class SettingsSubScreen { LLM_CONFIG, MODEL_SETUP }
+private enum class SettingsSubScreen { LLM_CONFIG, MODEL_SETUP, RAG_SEARCH }
 
 class MainActivity : ComponentActivity() {
 
@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
                         null -> SettingsHubScreen(
                             onNavigateToLlmConfig = { settingsSubScreen = SettingsSubScreen.LLM_CONFIG },
                             onNavigateToModelSetup = { settingsSubScreen = SettingsSubScreen.MODEL_SETUP },
+                            onNavigateToRagSearch = { settingsSubScreen = SettingsSubScreen.RAG_SEARCH },
                             onDismiss = {
                                 showSettings = false
                                 mainViewModel.checkConfig()
@@ -69,6 +70,12 @@ class MainActivity : ComponentActivity() {
                             onBack = { settingsSubScreen = null }
                         )
                         SettingsSubScreen.MODEL_SETUP -> ModelSetupScreen(
+                            onBack = { settingsSubScreen = null }
+                        )
+                        SettingsSubScreen.RAG_SEARCH -> RagSearchScreen(
+                            hybridSearcher = mainViewModel.hybridSearcher,
+                            vectorStore = mainViewModel.vectorStore,
+                            keywordSearcher = mainViewModel.keywordSearcher,
                             onBack = { settingsSubScreen = null }
                         )
                     }

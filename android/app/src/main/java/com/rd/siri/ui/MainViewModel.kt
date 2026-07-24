@@ -46,10 +46,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val ttsEngine = SherpaTtsEngine(application)
     private val configRepository = ConfigRepository(application)
     private val llmClient = LlmClient(configRepository)
-    private val vectorStore = VectorStore(application)
-    private val keywordSearcher = KeywordSearcher(application)
+    val vectorStore = VectorStore(application)
+    val keywordSearcher = KeywordSearcher(application)
     private val embeddingClient = EmbeddingClient(configRepository)
-    private val hybridSearcher = HybridSearcher(vectorStore, keywordSearcher, embeddingClient)
+    val hybridSearcher = HybridSearcher(vectorStore, keywordSearcher, embeddingClient)
     val chatSession = ChatSession(llmClient, configRepository, hybridSearcher)
 
     private val _state = MutableStateFlow(AppState())

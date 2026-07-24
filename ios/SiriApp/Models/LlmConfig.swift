@@ -11,7 +11,9 @@ struct LlmConfig: Codable, Equatable {
     let apiUrl: String
     let model: String
     let apiKey: String
-    var enableSearch: Bool
+    var enableSearch: Bool = true
+    var embeddingModel: String = "text-embedding-v3"
+    var enableRag: Bool = true
 
     var baseUrl: String {
         apiUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
@@ -31,12 +33,15 @@ struct LlmConfig: Codable, Equatable {
         apiUrl.contains("dashscope.aliyuncs.com")
     }
 
-    init(apiUrl: String, model: String, apiKey: String, enableSearch: Bool = true) {
+    init(apiUrl: String, model: String, apiKey: String, enableSearch: Bool = true,
+         embeddingModel: String = "text-embedding-v3", enableRag: Bool = true) {
         self.apiUrl = apiUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         self.model = model.trimmingCharacters(in: .whitespaces)
         self.apiKey = apiKey.trimmingCharacters(in: .whitespaces)
         // Bailian always supports web search
         let isBailian = self.apiUrl.contains("dashscope.aliyuncs.com")
         self.enableSearch = enableSearch || isBailian
+        self.embeddingModel = embeddingModel.trimmingCharacters(in: .whitespaces)
+        self.enableRag = enableRag
     }
 }

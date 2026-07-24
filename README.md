@@ -26,9 +26,11 @@ siri/
 │           │   ├── chat/              # LLM 客户端
 │           │   ├── config/            # 配置存储（EncryptedSharedPreferences）
 │           │   ├── model/             # 模型管理 & 数据模型
+│           │   ├── rag/               # RAG 混合检索（向量 + BM25）
 │           │   └── ui/                # Compose 界面
 │           ├── cpp/                   # JNI 桥接 C 源码
-│           └── jniLibs/               # 预编译 .so（从 GitHub Releases 获取）
+│           ├── jniLibs/               # 预编译 .so（从 GitHub Releases 获取）
+│           └── assets/rag/            # RAG 知识库资源（脚本生成，不提交 git）
 └── ios/                           # iOS 端
     ├── download-frameworks.sh     # Framework 下载脚本
     ├── SiriApp/
@@ -40,7 +42,9 @@ siri/
     │   ├── Helpers/               # 模型管理 / tar.bz2 解压 / Keychain
     │   ├── Models/                # 数据模型
     │   ├── ViewModels/            # MVVM ViewModel
+│   │   ├── Rag/                   # RAG 混合检索（向量 + BM25）
     │   └── Views/                 # SwiftUI 界面
+│   ├── RagAssets/                 # RAG 知识库资源（脚本生成，不提交 git）
     ├── Frameworks/                # 预编译 xcframework（不提交 git）
     └── SiriApp.xcodeproj/
 ```
@@ -263,6 +267,75 @@ App 内置设置界面，用户自行填写三项信息：
 | API Key | `sk-xxx...` | 用户自己的密钥 |
 
 支持 DeepSeek / OpenAI / Ollama / vLLM / 硅基流动 等所有兼容接口。
+
+---
+
+## RAG 知识库
+
+App 内嵌了基于 Markdown 文档的知识库检索增强生成（RAG）功能，采用 **混合检索** 策略：向量语义搜索 + BM25 关键词搜索 → RRF 融合排序。
+
+知识库资源文件由 Python 脚本离线预处理生成，在 PC 端运行一次即可，生成的文件随 App 打包。
+
+### 生成知识库资源
+
+```bash
+# 安装依赖
+pip install openai numpy
+
+# Android — 输出到 android/app/src/main/assets/rag/
+python script/build_rag_assets.py \
+    --docs ./docs \
+    --api-base https://dashscope.aliyuncs.com/compatible-mode/v1 \
+    --api-key sk-xxx \
+    --embedding-model text-embedding-v3 \
+    --out ./android/app/src/main/assets/rag/
+
+# iOS — 输出到 ios/SiriApp/RagAssets/
+python script/build_rag_assets.py \
+    --docs ./docs \
+    --api-base https://dashscope.aliyuncs.com/compatible-mode/v1 \
+    --api-key sk-xxx \
+    --embedding-model text-embedding-v3 \
+    --out ./ios/SiriApp/RagAssets/
+```
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `--docs` | Markdown 知识库文件或目录（可多个） | 必填 |
+| `--api-base` | Embedding API 地址 | `$RAG_API_BASE` 环境变量 |
+| `--api-key` | API Key | `$RAG_API_KEY` 环境变量 |
+| `--embedding-model` | Embedding 模型名称 | `text-embedding-v3` |
+| `--chunk-size` | 文本分块大小（字符数） | 500 |
+| `--out` | 输出目录 | `android/app/src/main/assets/rag/` |
+
+也可通过环境变量配置 API：
+```bash
+export RAG_API_BASE="https://dashscope.aliyuncs.com/compatible-mode/v1"
+export RAG_API_KEY="sk-xxx"
+python script/build_rag_assets.py --docs ./docs --out ./ios/SiriApp/RagAssets/
+```
+
+**输出文件**（3 个，合计 ~12 MB）：
+
+| 文件 | 说明 |
+|------|------|
+| `chunks.json` | 文本块元数据数组 `[{file, title, content}, ...]` |
+| `vectors.bin` | float32 向量矩阵（little-endian） |
+| `bm25_index.json` | BM25 倒排索引 |
+
+> **注意**：生成的知识库资源文件**不提交到 git**（已在 `.gitignore` 中排除）。每次构建 App 前需确保目标目录下有这 3 个文件。更新知识库 Markdown 文档后需重新运行脚本。
+
+### 检索流程
+
+```
+用户提问 → Embedding API（在线获取查询向量）
+         → 向量语义搜索（本地余弦相似度，topK=10）
+         → BM25 关键词搜索（本地倒排索引，topK=10）
+         → RRF 融合排序（K=60）→ top 3 chunks
+         → 注入 LLM 系统提示词 → API 回复
+```
+
+RAG 功能默认启用，可在应用中通过 `ConfigRepository.isRagEnabled()` 控制开关。
 
 ---
 
