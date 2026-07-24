@@ -19,6 +19,7 @@ import com.rd.siri.model.AppState
 import com.rd.siri.model.ChatMessage
 import com.rd.siri.model.VoiceState
 import com.rd.siri.tts.SherpaTtsEngine
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async

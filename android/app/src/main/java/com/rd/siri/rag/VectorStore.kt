@@ -15,7 +15,7 @@ import java.nio.ByteOrder
  * 从 assets/rag/ 加载预处理好的 chunks.json（元数据）和 vectors.bin（float32 向量矩阵）。
  * 向量已由 embedding API 归一化，余弦相似度 = 点积。
  */
-class VectorStore(context: Context, assetPath: String = "rag") {
+class VectorStore(private val context: Context, private val assetPath: String = "rag") {
 
     companion object {
         private const val TAG = "SiriApp"
@@ -66,7 +66,7 @@ class VectorStore(context: Context, assetPath: String = "rag") {
             }
 
             // 加载元数据
-            val jsonStr = ctx.assets.open(chunksPath).bufferedReader().use { it.readText() }
+            val jsonStr: String = ctx.assets.open(chunksPath).bufferedReader().use { it.readText() }
             val arr = JSONArray(jsonStr)
             val metaList = mutableListOf<ChunkMeta>()
             for (i in 0 until arr.length()) {
@@ -84,8 +84,8 @@ class VectorStore(context: Context, assetPath: String = "rag") {
             // 加载向量
             val inputStream = ctx.assets.open(vectorsPath)
             val dataStream = DataInputStream(inputStream)
-            val numVectors = dataStream.readInt()  // little-endian? DataInputStream is big-endian!
-            val dimRaw = dataStream.readInt()
+            dataStream.readInt()  // little-endian? DataInputStream is big-endian! discard; re-read below
+            dataStream.readInt()
 
             // vectors.bin is written as little-endian <ii; read manually
             dataStream.close()

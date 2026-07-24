@@ -11,7 +11,7 @@ import kotlin.math.ln
  * BM25 关键词检索器。
  * 从 assets 加载预构建的 bm25_index.json，在 Android 端执行纯本地 BM25 打分。
  */
-class KeywordSearcher(context: Context, assetPath: String = "rag") {
+class KeywordSearcher(private val context: Context, private val assetPath: String = "rag") {
 
     companion object {
         private const val TAG = "SiriApp"
@@ -49,7 +49,7 @@ class KeywordSearcher(context: Context, assetPath: String = "rag") {
                 return@withContext false
             }
 
-            val jsonStr = ctx.assets.open("$assetPath/bm25_index.json")
+            val jsonStr: String = ctx.assets.open("$assetPath/bm25_index.json")
                 .bufferedReader().use { it.readText() }
             val obj = JSONObject(jsonStr)
 
